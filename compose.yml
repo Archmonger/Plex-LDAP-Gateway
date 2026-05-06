@@ -1,0 +1,55 @@
+name: plex-ldap-gateway
+
+services:
+  ldap:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: plex-ldap-gateway:local
+    container_name: plex-ldap-gateway
+    environment:
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}
+      TZ: ${TZ:-UTC}
+      PLEX_OWNER_TOKEN: ${PLEX_OWNER_TOKEN:?Set PLEX_OWNER_TOKEN in .env}
+      PLEX_MACHINE_IDENTIFIER: ${PLEX_MACHINE_IDENTIFIER:?Set PLEX_MACHINE_IDENTIFIER in .env}
+      PLEX_BASE_URL: ${PLEX_BASE_URL:-https://plex.tv}
+      PLEX_CLIENT_PRODUCT: ${PLEX_CLIENT_PRODUCT:-Plex LDAP Gateway}
+      PLEX_CLIENT_VERSION: ${PLEX_CLIENT_VERSION:-0.1.0}
+      PLEX_TIMEOUT_SECONDS: ${PLEX_TIMEOUT_SECONDS:-10}
+      PLEX_LDAP_STRICT_MACHINE_MATCH: ${PLEX_LDAP_STRICT_MACHINE_MATCH:-true}
+      PLEX_LDAP_REFRESH_SECONDS: ${PLEX_LDAP_REFRESH_SECONDS:-300}
+      PLEX_LDAP_BASE_DN: ${PLEX_LDAP_BASE_DN:-dc=plex,dc=ldap}
+      PLEX_LDAP_HOST: 0.0.0.0
+      PLEX_LDAP_PORT: ${PLEX_LDAP_PORT:-1389}
+      PLEX_HTTP_HOST: 0.0.0.0
+      PLEX_HTTP_PORT: ${PLEX_HTTP_PORT:-8000}
+      SERVICE_CRASH_MAX_ATTEMPTS: ${SERVICE_CRASH_MAX_ATTEMPTS:-5}
+      SERVICE_CRASH_WINDOW_SECONDS: ${SERVICE_CRASH_WINDOW_SECONDS:-300}
+      SERVICE_CRASH_BACKOFF_SECONDS: ${SERVICE_CRASH_BACKOFF_SECONDS:-10}
+    ports:
+      - "${PLEX_LDAP_BIND_ADDRESS:-0.0.0.0}:${PLEX_LDAP_PORT:-1389}:${PLEX_LDAP_PORT:-1389}/tcp"
+      - "${PLEX_HTTP_BIND_ADDRESS:-127.0.0.1}:${PLEX_HTTP_PORT:-8000}:${PLEX_HTTP_PORT:-8000}/tcp"
+    volumes:
+      - plex-ldap-gateway-config:/config
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - curl --fail --silent http://127.0.0.1:$${PLEX_HTTP_PORT}/readyz || exit 1
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 45s
+    restart: on-failure:5
+    stop_grace_period: 30s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+
+volumes:
+  plex-ldap-gateway-config:

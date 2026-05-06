@@ -1,0 +1,54 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "plex-ldap-gateway"
+version = "0.1.0"
+description = "ASGI control plane and LDAP gateway that authenticates users against Plex."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [
+  { name = "Mark Bakhit" },
+]
+dependencies = [
+  "defusedxml>=0.7.1,<1.0",
+  "httpx>=0.27,<1.0",
+  "ldaptor>=21.2.0",
+  "starlette>=0.37,<1.0",
+  "twisted>=24.7.0",
+  "uvicorn>=0.30,<1.0",
+]
+
+[project.scripts]
+plex-ldap-gateway = "plex_ldap_gateway.__main__:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/plex_ldap_gateway"]
+
+[tool.hatch.envs.hatch-test]
+dependencies = [
+  "pytest>=8.3",
+  "pytest-asyncio>=0.24",
+  "coverage[toml]>=7.6",
+]
+
+[[tool.hatch.envs.hatch-test.matrix]]
+python = ["3.13", "3.14"]
+
+[tool.coverage.run]
+source_pkgs = ["plex_ldap_gateway"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 100
+show_missing = true
+skip_covered = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+markers = [
+  "live_plex: exercises the real Plex backend and requires environment secrets",
+]

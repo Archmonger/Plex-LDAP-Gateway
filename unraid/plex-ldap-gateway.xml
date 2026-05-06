@@ -1,0 +1,35 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>Plex LDAP Gateway</Name>
+  <Repository>ghcr.io/archmonger/ldap-plex-auth-backend:latest</Repository>
+  <Registry>https://ghcr.io</Registry>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/Archmonger/LDAP-Plex-Auth-Backend</Support>
+  <Project>https://github.com/Archmonger/LDAP-Plex-Auth-Backend</Project>
+  <Overview>Plex LDAP Gateway exposes a small ASGI control plane and a real LDAP listener that authenticates users against Plex and scopes authorization with a Plex owner token plus machine identifier.</Overview>
+  <Category>Network:Management Security:</Category>
+  <WebUI>http://[IP]:[PORT:8000]/healthz</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/Archmonger/LDAP-Plex-Auth-Backend/main/unraid/plex-ldap-gateway.xml</TemplateURL>
+  <ExtraParams>--cap-drop=ALL --cap-add=CHOWN --cap-add=SETGID --cap-add=SETUID --security-opt=no-new-privileges=true --restart=on-failure:5</ExtraParams>
+  <Config Name="Config" Target="/config" Default="/mnt/user/appdata/plex-ldap-gateway" Mode="rw" Description="Persistent application data." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/plex-ldap-gateway</Config>
+  <Config Name="LDAP Port" Target="1389" Default="1389" Mode="tcp" Description="LDAP listener port exposed by the container." Type="Port" Display="always" Required="true" Mask="false">1389</Config>
+  <Config Name="HTTP Port" Target="8000" Default="8000" Mode="tcp" Description="HTTP health and readiness port exposed by the container." Type="Port" Display="always" Required="true" Mask="false">8000</Config>
+  <Config Name="PUID" Target="PUID" Default="1000" Mode="" Description="User ID used by the LinuxServer base image." Type="Variable" Display="advanced" Required="false" Mask="false">1000</Config>
+  <Config Name="PGID" Target="PGID" Default="1000" Mode="" Description="Group ID used by the LinuxServer base image." Type="Variable" Display="advanced" Required="false" Mask="false">1000</Config>
+  <Config Name="TZ" Target="TZ" Default="UTC" Mode="" Description="Container time zone." Type="Variable" Display="advanced" Required="false" Mask="false">UTC</Config>
+  <Config Name="PLEX_OWNER_TOKEN" Target="PLEX_OWNER_TOKEN" Default="" Mode="" Description="Plex owner token used to enumerate and authorize directory users." Type="Variable" Display="always" Required="true" Mask="true"></Config>
+  <Config Name="PLEX_MACHINE_IDENTIFIER" Target="PLEX_MACHINE_IDENTIFIER" Default="" Mode="" Description="Plex Media Server machineIdentifier used to scope directory access." Type="Variable" Display="always" Required="true" Mask="false"></Config>
+  <Config Name="PLEX_BASE_URL" Target="PLEX_BASE_URL" Default="https://plex.tv" Mode="" Description="Base Plex API URL." Type="Variable" Display="advanced" Required="false" Mask="false">https://plex.tv</Config>
+  <Config Name="PLEX_CLIENT_PRODUCT" Target="PLEX_CLIENT_PRODUCT" Default="Plex LDAP Gateway" Mode="" Description="Client product string sent to Plex." Type="Variable" Display="advanced" Required="false" Mask="false">Plex LDAP Gateway</Config>
+  <Config Name="PLEX_CLIENT_VERSION" Target="PLEX_CLIENT_VERSION" Default="0.1.0" Mode="" Description="Client version string sent to Plex." Type="Variable" Display="advanced" Required="false" Mask="false">0.1.0</Config>
+  <Config Name="PLEX_TIMEOUT_SECONDS" Target="PLEX_TIMEOUT_SECONDS" Default="10" Mode="" Description="Timeout for Plex API requests." Type="Variable" Display="advanced" Required="false" Mask="false">10</Config>
+  <Config Name="PLEX_LDAP_STRICT_MACHINE_MATCH" Target="PLEX_LDAP_STRICT_MACHINE_MATCH" Default="true" Mode="" Description="Restrict LDAP users to Plex accounts with access to the configured machine identifier." Type="Variable" Display="advanced" Required="false" Mask="false">true</Config>
+  <Config Name="PLEX_LDAP_REFRESH_SECONDS" Target="PLEX_LDAP_REFRESH_SECONDS" Default="300" Mode="" Description="How long directory snapshots stay cached before a refresh." Type="Variable" Display="advanced" Required="false" Mask="false">300</Config>
+  <Config Name="PLEX_LDAP_BASE_DN" Target="PLEX_LDAP_BASE_DN" Default="dc=plex,dc=ldap" Mode="" Description="Base DN for the generated LDAP directory." Type="Variable" Display="advanced" Required="false" Mask="false">dc=plex,dc=ldap</Config>
+  <Config Name="SERVICE_CRASH_MAX_ATTEMPTS" Target="SERVICE_CRASH_MAX_ATTEMPTS" Default="5" Mode="" Description="Maximum supervised process crashes before the container exits." Type="Variable" Display="advanced" Required="false" Mask="false">5</Config>
+  <Config Name="SERVICE_CRASH_WINDOW_SECONDS" Target="SERVICE_CRASH_WINDOW_SECONDS" Default="300" Mode="" Description="Crash accounting window for the supervised process." Type="Variable" Display="advanced" Required="false" Mask="false">300</Config>
+  <Config Name="SERVICE_CRASH_BACKOFF_SECONDS" Target="SERVICE_CRASH_BACKOFF_SECONDS" Default="10" Mode="" Description="Delay between supervised process restart attempts." Type="Variable" Display="advanced" Required="false" Mask="false">10</Config>
+</Container>

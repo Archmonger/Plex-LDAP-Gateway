@@ -1,0 +1,41 @@
+#!/usr/bin/with-contenv bash
+set -Eeuo pipefail
+
+crash_limit="${SERVICE_CRASH_MAX_ATTEMPTS:-5}"
+crash_window="${SERVICE_CRASH_WINDOW_SECONDS:-300}"
+crash_backoff="${SERVICE_CRASH_BACKOFF_SECONDS:-10}"
+
+crash_count=0
+window_started_at=0
+
+echo "[plex-ldap-gateway] supervisor starting"
+
+while true; do
+    started_at="$(date +%s)"
+
+    if s6-setuidgid abc /opt/venv/bin/plex-ldap-gateway; then
+        echo "[plex-ldap-gateway] process exited cleanly"
+        exit 0
+    fi
+
+    exited_at="$(date +%s)"
+
+    if (( window_started_at == 0 || exited_at - window_started_at > crash_window )); then
+        window_started_at="${exited_at}"
+        crash_count=0
+    fi
+
+    crash_count=$((crash_count + 1))
+    runtime=$((exited_at - started_at))
+
+    echo "[plex-ldap-gateway] crash ${crash_count}/${crash_limit} within ${crash_window}s after ${runtime}s"
+
+    if (( crash_count >= crash_limit )); then
+        echo "[plex-ldap-gateway] crash-loop protection triggered, terminating container"
+        kill -TERM 1
+        sleep 5
+        exit 1
+    fi
+
+    sleep "${crash_backoff}"
+done
