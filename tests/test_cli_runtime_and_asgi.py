@@ -197,7 +197,9 @@ def test_install_asyncio_reactor_uses_running_loop(monkeypatch: pytest.MonkeyPat
     fake_reactor = AsyncioSelectorReactor()
 
     monkeypatch.setattr(runtime.asyncio, "get_running_loop", lambda: loop)
-    monkeypatch.setattr(runtime, "_ensure_windows_reactor_compatible_loop", lambda active_loop: calls.append(("ensure", active_loop)))
+    monkeypatch.setattr(
+        runtime, "_ensure_windows_reactor_compatible_loop", lambda active_loop: calls.append(("ensure", active_loop))
+    )
     monkeypatch.setattr(asyncioreactor, "install", lambda active_loop: calls.append(("install", active_loop)))
     monkeypatch.setattr(twisted_internet, "reactor", fake_reactor, raising=False)
 

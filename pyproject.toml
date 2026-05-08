@@ -54,3 +54,21 @@ testpaths = ["tests"]
 markers = [
   "live_plex: exercises the real Plex backend and requires environment secrets",
 ]
+
+[tool.ruff.lint]
+ignore = [
+  "EM101",
+  "EM102",
+  "TC001",
+  "TID252",
+  "TRY003",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"src/plex_ldap_gateway/__main__.py" = ["PLC0415"]
+"src/plex_ldap_gateway/app.py" = ["BLE001"]
+"src/plex_ldap_gateway/config.py" = ["FBT001", "S104", "TC003"]
+"src/plex_ldap_gateway/ldap_server.py" = ["N802", "N815"]
+"src/plex_ldap_gateway/runtime.py" = ["PLC0415"]
+"src/plex_ldap_gateway/utils.py" = ["BLE001"]
+"tests/**/*.py" = ["ARG001", "ARG002", "ARG005", "N802", "N818", "PLC0415", "PLR2004", "S101", "S105", "S106", "SLF001"]

@@ -46,14 +46,14 @@ def _ensure_windows_reactor_compatible_loop(loop: asyncio.AbstractEventLoop) -> 
 
 
 def install_asyncio_reactor(loop: asyncio.AbstractEventLoop | None = None):
-    from twisted.internet import asyncioreactor, error  # noqa: PLC0415
+    from twisted.internet import asyncioreactor, error
 
     active_loop = loop or asyncio.get_running_loop()
     _ensure_windows_reactor_compatible_loop(active_loop)
     with suppress(error.ReactorAlreadyInstalledError):
         asyncioreactor.install(active_loop)
 
-    from twisted.internet import reactor  # noqa: PLC0415
+    from twisted.internet import reactor
 
     if "AsyncioSelectorReactor" not in reactor.__class__.__name__:
         raise RuntimeError(INCOMPATIBLE_REACTOR_ERROR)
@@ -77,7 +77,7 @@ class LDAPListener:
         reactor = install_asyncio_reactor(asyncio.get_running_loop())
         if self.factory is None:
             from plex_ldap_gateway.ldap_server import (
-                PlexLDAPServerFactory,  # noqa: PLC0415
+                PlexLDAPServerFactory,
             )
 
             self.factory = PlexLDAPServerFactory(self.directory_service)

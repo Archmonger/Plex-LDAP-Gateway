@@ -70,12 +70,15 @@ async def test_live_ldap_bind_roundtrip(live_plex_inputs) -> None:
                 break
             await asyncio.sleep(0.1)
 
-        assert server.transport.value() == pureldap.LDAPMessage(
-            pureldap.LDAPBindResponse(
-                resultCode=ldaperrors.Success.resultCode,
-                matchedDN=user.dn,
-            ),
-            id=7,
-        ).toWire()
+        assert (
+            server.transport.value()
+            == pureldap.LDAPMessage(
+                pureldap.LDAPBindResponse(
+                    resultCode=ldaperrors.Success.resultCode,
+                    matchedDN=user.dn,
+                ),
+                id=7,
+            ).toWire()
+        )
     finally:
         await directory_service.aclose()

@@ -40,7 +40,7 @@ def create_app(
             await active_listener.stop()
             await active_directory_service.aclose()
 
-    async def healthz(request):
+    async def healthz(_request):
         snapshot = active_directory_service.current_snapshot
         return JSONResponse(
             {

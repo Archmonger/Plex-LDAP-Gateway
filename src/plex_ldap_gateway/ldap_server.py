@@ -13,12 +13,14 @@ from .directory import PlexDirectoryService
 from .errors import PlexAuthenticationError
 from .utils import await_maybe_deferred, deferred_from_coro
 
+LDAP_PROTOCOL_VERSION = 3
+
 
 class PlexLDAPServer(LDAPServer):
     fail_LDAPBindRequest = pureldap.LDAPBindResponse
 
-    def handle_LDAPBindRequest(self, request, controls, reply):
-        if request.version != 3:
+    def handle_LDAPBindRequest(self, request, controls, _reply):
+        if request.version != LDAP_PROTOCOL_VERSION:
             raise ldaperrors.LDAPProtocolError(f"Version {request.version} not supported")
 
         self.checkControls(controls)

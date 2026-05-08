@@ -69,11 +69,7 @@ class DirectoryUser:
 
     def matches_account(self, account: PlexAccount) -> bool:
         return bool(
-            (
-                self.plex_id is not None
-                and account.plex_id is not None
-                and self.plex_id == account.plex_id
-            )
+            (self.plex_id is not None and account.plex_id is not None and self.plex_id == account.plex_id)
             or (
                 self.plex_uuid
                 and account.uuid

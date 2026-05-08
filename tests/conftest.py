@@ -36,9 +36,7 @@ def live_plex_inputs() -> LivePlexInputs:
     )
     missing = [name for name in required if _live_value(name) is None]
     if missing:
-        pytest.skip(
-            "Live Plex tests require these environment variables: " + ", ".join(missing)
-        )
+        pytest.skip("Live Plex tests require these environment variables: " + ", ".join(missing))
 
     settings = Settings.from_env(environ)
     bind_login = _live_value("PLEX_TEST_BIND_LOGIN")

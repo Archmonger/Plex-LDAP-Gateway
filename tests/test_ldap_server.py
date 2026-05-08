@@ -67,10 +67,13 @@ async def test_ldap_bind_succeeds_for_directory_dn() -> None:
             break
         await asyncio.sleep(0)
 
-    assert server.transport.value() == pureldap.LDAPMessage(
-        pureldap.LDAPBindResponse(
-            resultCode=ldaperrors.Success.resultCode,
-            matchedDN=alice.dn,
-        ),
-        id=4,
-    ).toWire()
+    assert (
+        server.transport.value()
+        == pureldap.LDAPMessage(
+            pureldap.LDAPBindResponse(
+                resultCode=ldaperrors.Success.resultCode,
+                matchedDN=alice.dn,
+            ),
+            id=4,
+        ).toWire()
+    )

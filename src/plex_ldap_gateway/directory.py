@@ -110,11 +110,7 @@ def build_directory_snapshot(
         seen_identities.update(identity_keys)
         uid = _preferred_uid(account, used_uids)
         dn = f"uid={escape_rdn_value(uid)},{settings.users_dn}"
-        bind_logins = tuple(
-            login
-            for login in (account.username, account.email, uid)
-            if login and login.strip()
-        )
+        bind_logins = tuple(login for login in (account.username, account.email, uid) if login and login.strip())
         user = DirectoryUser(
             dn=dn,
             uid=uid,
@@ -145,11 +141,7 @@ def build_directory_snapshot(
         for alias in user.search_aliases:
             alias_buckets.setdefault(alias, []).append(user)
 
-    alias_index = {
-        alias: grouped_users[0]
-        for alias, grouped_users in alias_buckets.items()
-        if len(grouped_users) == 1
-    }
+    alias_index = {alias: grouped_users[0] for alias, grouped_users in alias_buckets.items() if len(grouped_users) == 1}
     return DirectorySnapshot(
         root=root,
         users=tuple(users),
@@ -178,7 +170,11 @@ class PlexDirectoryService:
             return self._snapshot
 
         async with self._refresh_lock:
-            if self._snapshot_loaded and not force and self._snapshot.age_seconds < self.settings.directory_refresh_seconds:
+            if (
+                self._snapshot_loaded
+                and not force
+                and self._snapshot.age_seconds < self.settings.directory_refresh_seconds
+            ):
                 return self._snapshot
             owner_account, shared_users = await asyncio.gather(
                 self.plex_client.get_owner_account(),
