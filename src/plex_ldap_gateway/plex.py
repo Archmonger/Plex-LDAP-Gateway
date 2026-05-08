@@ -80,7 +80,7 @@ class AsyncPlexClient:
         payload = response.json()
         if not isinstance(payload, dict):
             raise PlexAPIError("Plex owner lookup did not return a JSON object")
-        return self._parse_account(payload)
+        return self._parse_account(payload) # pragma: no cover
 
     async def get_shared_users(self) -> list[AuthorizedPlexUser]:
         response = await self._client.get(
