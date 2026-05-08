@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from .utils import derive_surname, normalize_identity
@@ -89,7 +89,7 @@ class DirectorySnapshot:
     users: tuple[DirectoryUser, ...]
     alias_index: dict[str, DirectoryUser]
     dn_index: dict[str, DirectoryUser]
-    generated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    generated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     @property
     def user_count(self) -> int:
@@ -97,5 +97,5 @@ class DirectorySnapshot:
 
     @property
     def age_seconds(self) -> float:
-        delta = datetime.now(timezone.utc) - self.generated_at
+        delta = datetime.now(UTC) - self.generated_at
         return delta.total_seconds()

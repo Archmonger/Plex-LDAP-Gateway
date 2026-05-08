@@ -9,7 +9,7 @@ import twisted.internet as twisted_internet
 from twisted.internet import asyncioreactor, defer, error
 
 import plex_ldap_gateway.__main__ as entry
-import plex_ldap_gateway.runtime as runtime
+from plex_ldap_gateway import runtime
 from plex_ldap_gateway.config import Settings, _get_bool, _get_float, _get_int, _require
 from plex_ldap_gateway.runtime import LDAPListener
 
@@ -107,58 +107,84 @@ async def test_serve_installs_reactor_and_runs_uvicorn(monkeypatch: pytest.Monke
     assert captured["loop"] is not None
 
 
-def test_main_sets_selector_policy_when_available(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_main_uses_runner_with_platform_loop_factory(monkeypatch: pytest.MonkeyPatch) -> None:
     captured: dict[str, object] = {}
     settings = make_settings()
-    policy = object()
+    loop_factory = object()
+
+    class FakeRunner:
+        def __init__(self, *, loop_factory):
+            captured["loop_factory"] = loop_factory
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb) -> None:
+            captured["closed"] = True
+
+        def run(self, target):
+            captured["target"] = target
 
     monkeypatch.setattr(entry, "Settings", SimpleNamespace(from_env=lambda: settings))
     monkeypatch.setattr(entry, "_serve", lambda active_settings: ("serve", active_settings))
-    monkeypatch.setattr(entry.asyncio, "run", lambda target: captured.setdefault("target", target))
-    monkeypatch.setattr(entry.asyncio, "WindowsSelectorEventLoopPolicy", lambda: policy, raising=False)
-    monkeypatch.setattr(entry.asyncio, "set_event_loop_policy", lambda value: captured.setdefault("policy", value))
+    monkeypatch.setattr(entry, "new_event_loop", loop_factory)
+    monkeypatch.setattr(entry.asyncio, "Runner", FakeRunner)
 
     entry.main()
 
-    assert captured["policy"] is policy
+    assert captured["loop_factory"] is loop_factory
     assert captured["target"] == ("serve", settings)
+    assert captured["closed"] is True
 
 
-def test_main_tolerates_missing_windows_selector_policy(monkeypatch: pytest.MonkeyPatch) -> None:
-    captured: dict[str, object] = {}
-    settings = make_settings()
+def test_new_event_loop_uses_winloop_on_windows(monkeypatch: pytest.MonkeyPatch) -> None:
+    sentinel = object()
 
-    def missing_policy() -> object:
-        raise AttributeError("missing")
+    monkeypatch.setattr(runtime.sys, "platform", "win32")
+    monkeypatch.setitem(sys.modules, "winloop", SimpleNamespace(new_event_loop=lambda: sentinel))
 
-    monkeypatch.setattr(entry, "Settings", SimpleNamespace(from_env=lambda: settings))
-    monkeypatch.setattr(entry, "_serve", lambda active_settings: ("serve", active_settings))
-    monkeypatch.setattr(entry.asyncio, "run", lambda target: captured.setdefault("target", target))
-    monkeypatch.setattr(entry.asyncio, "WindowsSelectorEventLoopPolicy", missing_policy, raising=False)
-    monkeypatch.setattr(entry.asyncio, "set_event_loop_policy", lambda value: captured.setdefault("policy", value))
-
-    entry.main()
-
-    assert captured["target"] == ("serve", settings)
-    assert "policy" not in captured
+    assert runtime.new_event_loop() is sentinel
 
 
-def test_ensure_windows_selector_loop_handles_platforms(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_new_event_loop_uses_uvloop_off_windows(monkeypatch: pytest.MonkeyPatch) -> None:
+    sentinel = object()
+
     monkeypatch.setattr(runtime.sys, "platform", "linux")
-    runtime._ensure_windows_selector_loop(object())
+    monkeypatch.setitem(sys.modules, "uvloop", SimpleNamespace(new_event_loop=lambda: sentinel))
+
+    assert runtime.new_event_loop() is sentinel
+
+
+def test_new_event_loop_falls_back_to_asyncio(monkeypatch: pytest.MonkeyPatch) -> None:
+    sentinel = object()
+
+    monkeypatch.setattr(runtime.sys, "platform", "linux")
+    monkeypatch.setattr(runtime.asyncio, "new_event_loop", lambda: sentinel)
+    monkeypatch.setitem(sys.modules, "uvloop", None)
+
+    assert runtime.new_event_loop() is sentinel
+
+
+def test_ensure_windows_reactor_compatible_loop_handles_platforms(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(runtime.sys, "platform", "linux")
+    runtime._ensure_windows_reactor_compatible_loop(object())
 
     monkeypatch.setattr(runtime.sys, "platform", "win32")
 
-    class SelectorEventLoop:
-        pass
+    class CompatibleLoop:
+        def add_reader(self, *args, **kwargs) -> None:
+            return None
+
+        def add_writer(self, *args, **kwargs) -> None:
+            return None
 
     class ProactorEventLoop:
         pass
 
-    runtime._ensure_windows_selector_loop(SelectorEventLoop())
+    runtime._ensure_windows_reactor_compatible_loop(CompatibleLoop())
 
-    with pytest.raises(RuntimeError, match="Windows requires a selector-based asyncio loop"):
-        runtime._ensure_windows_selector_loop(ProactorEventLoop())
+    with pytest.raises(RuntimeError, match="Windows requires a Twisted-compatible asyncio loop"):
+        runtime._ensure_windows_reactor_compatible_loop(ProactorEventLoop())
 
 
 def test_install_asyncio_reactor_uses_running_loop(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -171,7 +197,7 @@ def test_install_asyncio_reactor_uses_running_loop(monkeypatch: pytest.MonkeyPat
     fake_reactor = AsyncioSelectorReactor()
 
     monkeypatch.setattr(runtime.asyncio, "get_running_loop", lambda: loop)
-    monkeypatch.setattr(runtime, "_ensure_windows_selector_loop", lambda active_loop: calls.append(("ensure", active_loop)))
+    monkeypatch.setattr(runtime, "_ensure_windows_reactor_compatible_loop", lambda active_loop: calls.append(("ensure", active_loop)))
     monkeypatch.setattr(asyncioreactor, "install", lambda active_loop: calls.append(("install", active_loop)))
     monkeypatch.setattr(twisted_internet, "reactor", fake_reactor, raising=False)
 
@@ -183,11 +209,11 @@ def test_install_asyncio_reactor_rejects_incompatible_reactor(monkeypatch: pytes
     class AlreadyInstalled(Exception):
         pass
 
-    monkeypatch.setattr(runtime, "_ensure_windows_selector_loop", lambda active_loop: None)
+    monkeypatch.setattr(runtime, "_ensure_windows_reactor_compatible_loop", lambda active_loop: None)
     monkeypatch.setattr(error, "ReactorAlreadyInstalledError", AlreadyInstalled, raising=False)
 
     def raise_installed(_loop: object) -> None:
-        raise AlreadyInstalled()
+        raise AlreadyInstalled
 
     monkeypatch.setattr(asyncioreactor, "install", raise_installed)
     monkeypatch.setattr(twisted_internet, "reactor", object(), raising=False)
@@ -224,7 +250,7 @@ async def test_ldap_listener_start_and_stop_with_deferred(monkeypatch: pytest.Mo
     port = FakePort(stop_result)
     reactor = FakeReactor(port)
 
-    import plex_ldap_gateway.ldap_server as ldap_server
+    from plex_ldap_gateway import ldap_server
 
     class FakeFactory:
         def __init__(self, directory_service: object) -> None:

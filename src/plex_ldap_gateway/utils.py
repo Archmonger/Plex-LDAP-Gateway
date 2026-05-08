@@ -31,9 +31,7 @@ def escape_rdn_value(value: str) -> str:
     escaped: list[str] = []
     last_index = len(value) - 1
     for index, char in enumerate(value):
-        if char in {",", "+", '"', "\\", "<", ">", ";", "="}:
-            escaped.append(f"\\{char}")
-        elif index == 0 and char in {" ", "#"}:
+        if char in {",", "+", '"', "\\", "<", ">", ";", "="} or (index == 0 and char in {" ", "#"}):
             escaped.append(f"\\{char}")
         elif index == last_index and char == " ":
             escaped.append("\\ ")

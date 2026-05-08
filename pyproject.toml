@@ -19,6 +19,8 @@ dependencies = [
   "starlette>=0.37,<1.0",
   "twisted>=24.7.0",
   "uvicorn>=0.30,<1.0",
+  "uvloop>=0.22.1; sys_platform != 'win32'",
+  "winloop>=0.6.3; sys_platform == 'win32'",
 ]
 
 [project.scripts]

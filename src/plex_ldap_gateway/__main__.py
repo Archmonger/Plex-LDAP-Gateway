@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import asyncio
-from contextlib import suppress
 
 import uvicorn
 
 from .config import Settings
-from .runtime import install_asyncio_reactor
+from .runtime import install_asyncio_reactor, new_event_loop
 
 
 async def _serve(settings: Settings) -> None:
@@ -27,8 +26,6 @@ async def _serve(settings: Settings) -> None:
 
 
 def main() -> None:
-    with suppress(AttributeError):
-        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-
     settings = Settings.from_env()
-    asyncio.run(_serve(settings))
+    with asyncio.Runner(loop_factory=new_event_loop) as runner:
+        runner.run(_serve(settings))

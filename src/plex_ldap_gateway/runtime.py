@@ -4,37 +4,59 @@ from __future__ import annotations
 
 import asyncio
 import sys
+from contextlib import suppress
+from importlib import import_module
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .config import Settings
-    from .directory import PlexDirectoryService
+    from plex_ldap_gateway.config import Settings
+    from plex_ldap_gateway.directory import PlexDirectoryService
 
 
-def _ensure_windows_selector_loop(loop: asyncio.AbstractEventLoop) -> None:
+WINDOWS_LOOP_ERROR = (
+    "Windows requires a Twisted-compatible asyncio loop. "
+    "Use the bundled plex-ldap-gateway runner so winloop is selected before startup."
+)
+
+INCOMPATIBLE_REACTOR_ERROR = "Twisted reactor is already installed and is not asyncio-compatible"
+
+
+def new_event_loop() -> asyncio.AbstractEventLoop:
+    if sys.platform == "win32":
+        try:
+            winloop = import_module("winloop")
+        except ImportError:
+            return asyncio.new_event_loop()
+        return winloop.new_event_loop()
+
+    try:
+        uvloop = import_module("uvloop")
+    except ImportError:
+        return asyncio.new_event_loop()
+    return uvloop.new_event_loop()
+
+
+def _ensure_windows_reactor_compatible_loop(loop: asyncio.AbstractEventLoop) -> None:
     if sys.platform != "win32":
         return
-    if "SelectorEventLoop" not in loop.__class__.__name__:
-        raise RuntimeError(
-            "Windows requires a selector-based asyncio loop for Twisted integration. "
-            "Use the bundled plex-ldap-gateway runner or set WindowsSelectorEventLoopPolicy before startup."
-        )
+    if "ProactorEventLoop" in loop.__class__.__name__:
+        raise RuntimeError(WINDOWS_LOOP_ERROR)
+    if not callable(getattr(loop, "add_reader", None)) or not callable(getattr(loop, "add_writer", None)):
+        raise TypeError(WINDOWS_LOOP_ERROR)
 
 
 def install_asyncio_reactor(loop: asyncio.AbstractEventLoop | None = None):
-    from twisted.internet import asyncioreactor, error
+    from twisted.internet import asyncioreactor, error  # noqa: PLC0415
 
     active_loop = loop or asyncio.get_running_loop()
-    _ensure_windows_selector_loop(active_loop)
-    try:
+    _ensure_windows_reactor_compatible_loop(active_loop)
+    with suppress(error.ReactorAlreadyInstalledError):
         asyncioreactor.install(active_loop)
-    except error.ReactorAlreadyInstalledError:
-        pass
 
-    from twisted.internet import reactor
+    from twisted.internet import reactor  # noqa: PLC0415
 
     if "AsyncioSelectorReactor" not in reactor.__class__.__name__:
-        raise RuntimeError("Twisted reactor is already installed and is not asyncio-compatible")
+        raise RuntimeError(INCOMPATIBLE_REACTOR_ERROR)
     return reactor
 
 
@@ -54,7 +76,9 @@ class LDAPListener:
             return
         reactor = install_asyncio_reactor(asyncio.get_running_loop())
         if self.factory is None:
-            from .ldap_server import PlexLDAPServerFactory
+            from plex_ldap_gateway.ldap_server import (
+                PlexLDAPServerFactory,  # noqa: PLC0415
+            )
 
             self.factory = PlexLDAPServerFactory(self.directory_service)
         self._listening_port = reactor.listenTCP(

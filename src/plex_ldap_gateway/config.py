@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from os import environ
-from typing import Mapping
 
 from .__init__ import __version__
 
@@ -59,7 +59,7 @@ class Settings:
         return f"ou=users,{self.ldap_base_dn}"
 
     @classmethod
-    def from_env(cls, values: Mapping[str, str] | None = None) -> "Settings":
+    def from_env(cls, values: Mapping[str, str] | None = None) -> Settings:
         source = values or environ
         machine_identifier = _require("PLEX_MACHINE_IDENTIFIER", source)
         client_identifier = source.get(

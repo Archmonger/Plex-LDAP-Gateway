@@ -41,7 +41,7 @@ pip install -e .
 plex-ldap-gateway
 ```
 
-The bundled runner matters on Windows because Twisted's asyncio reactor requires `WindowsSelectorEventLoopPolicy` before the event loop starts.
+The bundled runner selects `uvloop` on non-Windows platforms and `winloop` on Windows before Twisted installs its asyncio reactor.
 
 You can also point an ASGI server at the app factory:
 
@@ -49,7 +49,7 @@ You can also point an ASGI server at the app factory:
 uvicorn --factory plex_ldap_gateway.app:create_app --host 127.0.0.1 --port 8000
 ```
 
-On Windows, set the selector event loop policy before starting the ASGI server if you do not use the bundled runner.
+If you do not use the bundled runner, ensure your ASGI server creates a Twisted-compatible asyncio loop before startup.
 
 The packaged entrypoint reads all runtime inputs from the `environ` and passes those settings to the HTTP and LDAP startup.
 
