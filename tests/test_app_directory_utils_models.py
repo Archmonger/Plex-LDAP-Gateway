@@ -245,6 +245,14 @@ async def test_authenticate_bind_rejects_empty_passwords() -> None:
 
 
 @pytest.mark.asyncio
+async def test_authenticate_bind_rejects_invalid_utf8_password_bytes() -> None:
+    service = PlexDirectoryService(make_settings(), MatchingPlexClient())
+
+    with pytest.raises(PlexAuthenticationError, match="Invalid credential encoding"):
+        await service.authenticate_bind("alice", b"\xff")
+
+
+@pytest.mark.asyncio
 async def test_authenticate_bind_retries_after_invalid_candidate() -> None:
     client = EmailFallbackPlexClient()
     service = PlexDirectoryService(make_settings(), client)

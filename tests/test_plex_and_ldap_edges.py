@@ -188,6 +188,19 @@ async def test_bind_against_plex_maps_invalid_credentials() -> None:
 
 
 @pytest.mark.asyncio
+async def test_bind_against_plex_maps_unexpected_errors_to_unavailable() -> None:
+    class ExplodingDirectoryService:
+        async def authenticate_bind(self, bind_identity: str, password: str):
+            raise RuntimeError("backend down")
+
+    server = PlexLDAPServer()
+    server.factory = SimpleNamespace(directory_service=ExplodingDirectoryService())
+
+    with pytest.raises(ldaperrors.LDAPUnavailable, match="Authentication backend unavailable"):
+        await server._bind_against_plex(SimpleNamespace(dn="uid=alice", auth="secret"))
+
+
+@pytest.mark.asyncio
 async def test_refresh_then_search_refreshes_directory_and_exposes_root(monkeypatch: pytest.MonkeyPatch) -> None:
     class RefreshingDirectoryService:
         def __init__(self) -> None:

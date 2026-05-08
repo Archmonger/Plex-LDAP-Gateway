@@ -64,6 +64,14 @@ def test_config_helpers_and_settings_defaults(monkeypatch: pytest.MonkeyPatch) -
         _require("REQUIRED", {})
 
 
+def test_settings_from_env_honors_explicit_empty_mapping(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("PLEX_OWNER_TOKEN", "owner-token")
+    monkeypatch.setenv("PLEX_MACHINE_IDENTIFIER", "machine-1")
+
+    with pytest.raises(ValueError, match="Missing required environment variable: PLEX_MACHINE_IDENTIFIER"):
+        Settings.from_env({})
+
+
 def test_asgi_module_uses_create_app(monkeypatch: pytest.MonkeyPatch) -> None:
     sentinel = object()
 
@@ -147,6 +155,16 @@ def test_new_event_loop_uses_winloop_on_windows(monkeypatch: pytest.MonkeyPatch)
     assert runtime.new_event_loop() is sentinel
 
 
+def test_new_event_loop_falls_back_to_asyncio_on_windows(monkeypatch: pytest.MonkeyPatch) -> None:
+    sentinel = object()
+
+    monkeypatch.setattr(runtime.sys, "platform", "win32")
+    monkeypatch.setattr(runtime.asyncio, "new_event_loop", lambda: sentinel)
+    monkeypatch.setitem(sys.modules, "winloop", None)
+
+    assert runtime.new_event_loop() is sentinel
+
+
 def test_new_event_loop_uses_uvloop_off_windows(monkeypatch: pytest.MonkeyPatch) -> None:
     sentinel = object()
 
@@ -186,6 +204,13 @@ def test_ensure_windows_reactor_compatible_loop_handles_platforms(monkeypatch: p
 
     with pytest.raises(RuntimeError, match="Windows requires a Twisted-compatible asyncio loop"):
         runtime._ensure_windows_reactor_compatible_loop(ProactorEventLoop())
+
+    class MissingReaderLoop:
+        def add_writer(self, *args, **kwargs) -> None:
+            return None
+
+    with pytest.raises(TypeError, match="Windows requires a Twisted-compatible asyncio loop"):
+        runtime._ensure_windows_reactor_compatible_loop(MissingReaderLoop())
 
 
 def test_install_asyncio_reactor_uses_running_loop(monkeypatch: pytest.MonkeyPatch) -> None:

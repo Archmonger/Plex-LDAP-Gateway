@@ -1,0 +1,25 @@
+name: Publish Latest Build to GHCR
+
+on:
+    release:
+        types: [published]
+
+jobs:
+    docker:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Set up QEMU
+              uses: docker/setup-qemu-action@v3
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
+            - name: Log in to GHCR
+              uses: docker/login-action@v3
+              with:
+                  registry: ghcr.io
+                  username: ${{ github.actor }}
+                  password: ${{ github.token }}
+            - name: Build and push plex-ldap-gateway image
+              uses: docker/build-push-action@v6
+              with:
+                  push: true
+                  tags: ghcr.io/archmonger/plex-ldap-gateway:latest,ghcr.io/archmonger/plex-ldap-gateway:${{ github.event.release.tag_name }}

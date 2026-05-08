@@ -39,6 +39,8 @@ class PlexLDAPServer(LDAPServer):
             user = await self.factory.directory_service.authenticate_bind(request.dn, request.auth)
         except PlexAuthenticationError as error:
             raise ldaperrors.LDAPInvalidCredentials(str(error)) from error
+        except Exception as error:
+            raise ldaperrors.LDAPUnavailable("Authentication backend unavailable") from error
 
         root = interfaces.IConnectedLDAPEntry(self.factory)
         entry = await await_maybe_deferred(root.lookup(distinguishedname.DistinguishedName(user.dn)))

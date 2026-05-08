@@ -24,6 +24,15 @@ class PlexClientProtocol(Protocol):
     async def aclose(self) -> None: ...
 
 
+def _decode_credential_value(value: str | bytes) -> str:
+    if isinstance(value, bytes):
+        try:
+            return value.decode("utf-8")
+        except UnicodeDecodeError as error:
+            raise PlexAuthenticationError("Invalid credential encoding") from error
+    return value
+
+
 def _identity_keys(account: PlexAccount) -> set[str]:
     keys = set()
     if account.plex_id is not None:
@@ -193,7 +202,7 @@ class PlexDirectoryService:
         if user is None:
             raise PlexAuthenticationError("Unknown Plex directory identity")
 
-        password_text = password.decode("utf-8") if isinstance(password, bytes) else password
+        password_text = _decode_credential_value(password)
         bind_candidates = self._bind_candidates(bind_identity, user)
         for login in bind_candidates:
             try:
@@ -206,7 +215,7 @@ class PlexDirectoryService:
         raise PlexAuthenticationError("Invalid Plex credentials")
 
     def _bind_candidates(self, bind_identity: str | bytes, user: DirectoryUser) -> tuple[str, ...]:
-        raw = bind_identity.decode("utf-8") if isinstance(bind_identity, bytes) else bind_identity
+        raw = _decode_credential_value(bind_identity)
         raw = raw.strip()
         candidates: list[str] = []
         if raw and "," not in raw and "=" not in raw:
@@ -221,7 +230,7 @@ class PlexDirectoryService:
         return tuple(candidates)
 
     def _resolve_user(self, snapshot: DirectorySnapshot, bind_identity: str | bytes) -> DirectoryUser | None:
-        raw = bind_identity.decode("utf-8") if isinstance(bind_identity, bytes) else bind_identity
+        raw = _decode_credential_value(bind_identity)
         raw = raw.strip()
         if not raw:
             return None

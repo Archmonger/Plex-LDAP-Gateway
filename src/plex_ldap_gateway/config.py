@@ -60,7 +60,7 @@ class Settings:
 
     @classmethod
     def from_env(cls, values: Mapping[str, str] | None = None) -> Settings:
-        source = values or environ
+        source = environ if values is None else values
         machine_identifier = _require("PLEX_MACHINE_IDENTIFIER", source)
         client_identifier = source.get(
             "PLEX_CLIENT_IDENTIFIER",

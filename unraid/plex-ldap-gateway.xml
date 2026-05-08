@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <Container version="2">
   <Name>Plex LDAP Gateway</Name>
-  <Repository>ghcr.io/archmonger/ldap-plex-auth-backend:latest</Repository>
+  <Repository>ghcr.io/archmonger/plex-ldap-gateway:latest</Repository>
   <Registry>https://ghcr.io</Registry>
   <Network>bridge</Network>
   <MyIP/>
