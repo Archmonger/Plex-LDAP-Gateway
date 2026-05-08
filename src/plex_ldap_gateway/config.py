@@ -80,5 +80,5 @@ class Settings:
             ldap_host=source.get("PLEX_LDAP_HOST", "0.0.0.0").strip(),
             ldap_port=_get_int("PLEX_LDAP_PORT", source, 1389),
             http_host=source.get("PLEX_HTTP_HOST", "127.0.0.1").strip(),
-            http_port=_get_int("PLEX_HTTP_PORT", source, 8000),
+            http_port=_get_int("PLEX_HTTP_PORT", source, 7576),
         )

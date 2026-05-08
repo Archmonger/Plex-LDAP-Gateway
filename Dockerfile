@@ -29,4 +29,4 @@ COPY rootfs /
 
 RUN chmod +x /custom-services.d/plex-ldap-gateway
 
-EXPOSE 1389 8000
+EXPOSE 1389 7576

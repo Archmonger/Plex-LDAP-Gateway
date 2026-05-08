@@ -11,12 +11,12 @@
   <Project>https://github.com/Archmonger/LDAP-Plex-Auth-Backend</Project>
   <Overview>Plex LDAP Gateway exposes a small ASGI control plane and a real LDAP listener that authenticates users against Plex and scopes authorization with a Plex owner token plus machine identifier.</Overview>
   <Category>Network:Management Security:</Category>
-  <WebUI>http://[IP]:[PORT:8000]/healthz</WebUI>
+  <WebUI>http://[IP]:[PORT:7576]/healthz</WebUI>
   <TemplateURL>https://raw.githubusercontent.com/Archmonger/LDAP-Plex-Auth-Backend/main/unraid/plex-ldap-gateway.xml</TemplateURL>
   <ExtraParams>--cap-drop=ALL --cap-add=CHOWN --cap-add=SETGID --cap-add=SETUID --security-opt=no-new-privileges=true --restart=on-failure:5</ExtraParams>
   <Config Name="Config" Target="/config" Default="/mnt/user/appdata/plex-ldap-gateway" Mode="rw" Description="Persistent application data." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/plex-ldap-gateway</Config>
   <Config Name="LDAP Port" Target="1389" Default="1389" Mode="tcp" Description="LDAP listener port exposed by the container." Type="Port" Display="always" Required="true" Mask="false">1389</Config>
-  <Config Name="HTTP Port" Target="8000" Default="8000" Mode="tcp" Description="HTTP health and readiness port exposed by the container." Type="Port" Display="always" Required="true" Mask="false">8000</Config>
+  <Config Name="HTTP Port" Target="7576" Default="7576" Mode="tcp" Description="HTTP health and readiness port exposed by the container." Type="Port" Display="always" Required="true" Mask="false">7576</Config>
   <Config Name="PUID" Target="PUID" Default="1000" Mode="" Description="User ID used by the LinuxServer base image." Type="Variable" Display="advanced" Required="false" Mask="false">1000</Config>
   <Config Name="PGID" Target="PGID" Default="1000" Mode="" Description="Group ID used by the LinuxServer base image." Type="Variable" Display="advanced" Required="false" Mask="false">1000</Config>
   <Config Name="TZ" Target="TZ" Default="UTC" Mode="" Description="Container time zone." Type="Variable" Display="advanced" Required="false" Mask="false">UTC</Config>

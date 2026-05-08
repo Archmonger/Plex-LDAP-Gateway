@@ -121,7 +121,7 @@ jobs:
 
       - name: Verify HTTP readiness
         if: steps.plex-inputs.outputs.available == 'true'
-        run: curl --fail --silent http://127.0.0.1:8000/readyz
+        run: curl --fail --silent http://127.0.0.1:7576/readyz
 
       - name: Verify LDAP port
         if: steps.plex-inputs.outputs.available == 'true'

@@ -51,6 +51,7 @@ def test_config_helpers_and_settings_defaults(monkeypatch: pytest.MonkeyPatch) -
     assert settings.plex_timeout_seconds == 10.0
     assert settings.strict_machine_match is True
     assert settings.directory_refresh_seconds == 300
+    assert settings.http_port == 7576
     assert settings.users_dn == "ou=users,dc=plex,dc=ldap"
     assert _get_bool("FLAG", {}, False) is False
     assert _get_bool("FLAG", {"FLAG": "On"}, False) is True
