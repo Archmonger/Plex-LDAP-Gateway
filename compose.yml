@@ -8,8 +8,8 @@ services:
     image: plex-ldap-gateway:local
     container_name: plex-ldap-gateway
     environment:
-      PUID: ${PUID:-1000}
-      PGID: ${PGID:-1000}
+      PUID: ${PUID:-99}
+      PGID: ${PGID:-100}
       TZ: ${TZ:-UTC}
       PLEX_OWNER_TOKEN: ${PLEX_OWNER_TOKEN:?Set PLEX_OWNER_TOKEN in .env}
       PLEX_MACHINE_IDENTIFIER: ${PLEX_MACHINE_IDENTIFIER:?Set PLEX_MACHINE_IDENTIFIER in .env}

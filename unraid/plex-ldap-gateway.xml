@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <Container version="2">
-  <Name>Plex LDAP Gateway</Name>
+  <Name>plex-ldap-gateway</Name>
   <Repository>ghcr.io/archmonger/plex-ldap-gateway:latest</Repository>
   <Registry>https://ghcr.io</Registry>
   <Network>bridge</Network>
@@ -17,8 +17,8 @@
   <Config Name="Config" Target="/config" Default="/mnt/user/appdata/plex-ldap-gateway" Mode="rw" Description="Persistent application data." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/plex-ldap-gateway</Config>
   <Config Name="LDAP Port" Target="1389" Default="1389" Mode="tcp" Description="LDAP listener port exposed by the container." Type="Port" Display="always" Required="true" Mask="false">1389</Config>
   <Config Name="HTTP Port" Target="7576" Default="7576" Mode="tcp" Description="HTTP health and readiness port exposed by the container." Type="Port" Display="always" Required="true" Mask="false">7576</Config>
-  <Config Name="PUID" Target="PUID" Default="1000" Mode="" Description="User ID used by the LinuxServer base image." Type="Variable" Display="advanced" Required="false" Mask="false">1000</Config>
-  <Config Name="PGID" Target="PGID" Default="1000" Mode="" Description="Group ID used by the LinuxServer base image." Type="Variable" Display="advanced" Required="false" Mask="false">1000</Config>
+  <Config Name="PUID" Target="PUID" Default="99" Mode="" Description="User ID used by the LinuxServer base image." Type="Variable" Display="advanced" Required="false" Mask="false">99</Config>
+  <Config Name="PGID" Target="PGID" Default="100" Mode="" Description="Group ID used by the LinuxServer base image." Type="Variable" Display="advanced" Required="false" Mask="false">100</Config>
   <Config Name="TZ" Target="TZ" Default="UTC" Mode="" Description="Container time zone." Type="Variable" Display="advanced" Required="false" Mask="false">UTC</Config>
   <Config Name="PLEX_OWNER_TOKEN" Target="PLEX_OWNER_TOKEN" Default="" Mode="" Description="Plex owner token used to enumerate and authorize directory users." Type="Variable" Display="always" Required="true" Mask="true"></Config>
   <Config Name="PLEX_MACHINE_IDENTIFIER" Target="PLEX_MACHINE_IDENTIFIER" Default="" Mode="" Description="Plex Media Server machineIdentifier used to scope directory access." Type="Variable" Display="always" Required="true" Mask="false"></Config>
