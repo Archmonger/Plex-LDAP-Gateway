@@ -20,7 +20,7 @@ def make_settings() -> Settings:
         {
             "PLEX_OWNER_TOKEN": "owner-token",
             "PLEX_MACHINE_IDENTIFIER": "machine-1",
-            "PLEX_LDAP_BASE_DN": "dc=plex,dc=ldap",
+            "GATEWAY_LDAP_BASE_DN": "dc=plex,dc=ldap",
         }
     )
 
@@ -32,13 +32,13 @@ def test_config_helpers_and_settings_defaults(monkeypatch: pytest.MonkeyPatch) -
         "PLEX_CLIENT_PRODUCT",
         "PLEX_CLIENT_VERSION",
         "PLEX_TIMEOUT_SECONDS",
-        "PLEX_LDAP_STRICT_MACHINE_MATCH",
-        "PLEX_LDAP_REFRESH_SECONDS",
-        "PLEX_LDAP_BASE_DN",
-        "PLEX_LDAP_HOST",
-        "PLEX_LDAP_PORT",
-        "PLEX_HTTP_HOST",
-        "PLEX_HTTP_PORT",
+        "GATEWAY_LDAP_STRICT_MACHINE_MATCH",
+        "GATEWAY_LDAP_REFRESH_SECONDS",
+        "GATEWAY_LDAP_BASE_DN",
+        "GATEWAY_LDAP_HOST",
+        "GATEWAY_LDAP_PORT",
+        "GATEWAY_HTTP_HOST",
+        "GATEWAY_HTTP_PORT",
         "GATEWAY_LOG_LEVEL",
         "GATEWAY_LOG_OUTPUT",
         "GATEWAY_LOG_FILE_PATH",

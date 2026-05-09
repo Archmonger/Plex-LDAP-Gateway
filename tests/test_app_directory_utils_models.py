@@ -31,10 +31,10 @@ def make_settings(*, strict_machine_match: bool = True) -> Settings:
     values = {
         "PLEX_OWNER_TOKEN": "owner-token",
         "PLEX_MACHINE_IDENTIFIER": "machine-1",
-        "PLEX_LDAP_BASE_DN": "dc=plex,dc=ldap",
+        "GATEWAY_LDAP_BASE_DN": "dc=plex,dc=ldap",
     }
     if not strict_machine_match:
-        values["PLEX_LDAP_STRICT_MACHINE_MATCH"] = "false"
+        values["GATEWAY_LDAP_STRICT_MACHINE_MATCH"] = "false"
     return Settings.from_env(values)
 
 

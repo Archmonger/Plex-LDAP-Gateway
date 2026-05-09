@@ -67,7 +67,7 @@ def make_settings() -> Settings:
         {
             "PLEX_OWNER_TOKEN": "owner-token",
             "PLEX_MACHINE_IDENTIFIER": "machine-1",
-            "PLEX_LDAP_BASE_DN": "dc=plex,dc=ldap",
+            "GATEWAY_LDAP_BASE_DN": "dc=plex,dc=ldap",
         }
     )
 

@@ -25,7 +25,7 @@ Here is an example client configuration, written from the perspective of the `Je
 | `Password Reset Url` | `https://app.plex.tv/auth/#?resetPassword` | Optional convenience link; password changes do not happen through LDAP here. |
 | `LDAP Bind User` | blank | Leave blank to use anonymous binds. |
 | `LDAP Bind User Password` | blank | Not needed when the bind user is blank. |
-| `LDAP Base DN for searches` | `ou=users,dc=plex,dc=ldap` | This should match the base DN used in the gateway configuration `PLEX_LDAP_BASE_DN`. |
+| `LDAP Base DN for searches` | `ou=users,dc=plex,dc=ldap` | This should match the base DN used in the gateway configuration `GATEWAY_LDAP_BASE_DN`. |
 | `LDAP Search Filter` | `(objectClass=inetOrgPerson)` | Used as the base filter; the plugin adds an OR over the search attributes below. |
 | `LDAP Search Attributes` | `uid, cn, mail, plexUsername` | Allow users sign in with any username-like attributes. |
 | `LDAP Uid Attribute` | `uid` | Unique and always present. |
@@ -52,13 +52,13 @@ Optional application settings:
 - `PLEX_CLIENT_PRODUCT`: defaults to `Plex LDAP Gateway`
 - `PLEX_CLIENT_VERSION`: defaults to the package version
 - `PLEX_TIMEOUT_SECONDS`: defaults to `10`
-- `PLEX_LDAP_STRICT_MACHINE_MATCH`: defaults to `true`
-- `PLEX_LDAP_REFRESH_SECONDS`: defaults to `300`
-- `PLEX_LDAP_BASE_DN`: defaults to `dc=plex,dc=ldap`
-- `PLEX_LDAP_HOST`: defaults to `0.0.0.0`
-- `PLEX_LDAP_PORT`: defaults to `1389`
-- `PLEX_HTTP_HOST`: defaults to `127.0.0.1`
-- `PLEX_HTTP_PORT`: defaults to `7576`
+- `GATEWAY_LDAP_STRICT_MACHINE_MATCH`: defaults to `true`
+- `GATEWAY_LDAP_REFRESH_SECONDS`: defaults to `300`
+- `GATEWAY_LDAP_BASE_DN`: defaults to `dc=plex,dc=ldap`
+- `GATEWAY_LDAP_HOST`: defaults to `0.0.0.0`
+- `GATEWAY_LDAP_PORT`: defaults to `1389`
+- `GATEWAY_HTTP_HOST`: defaults to `127.0.0.1`
+- `GATEWAY_HTTP_PORT`: defaults to `7576`
 - `GATEWAY_LOG_LEVEL`: defaults to `ERROR`
 - `GATEWAY_LOG_OUTPUT`: defaults to `console`; supported values are `console`, `file`, and `both`
 - `GATEWAY_LOG_FILE_PATH`: defaults to `plex-ldap-gateway.log`; used when `GATEWAY_LOG_OUTPUT` includes file output
@@ -66,10 +66,10 @@ Optional application settings:
 Docker specific settings:
 
 - `PUID`, `PGID`, `TZ`
-- `PLEX_LDAP_BIND_ADDRESS`, `PLEX_HTTP_BIND_ADDRESS`
+- `GATEWAY_LDAP_BIND_ADDRESS`, `GATEWAY_HTTP_BIND_ADDRESS`
 - `SERVICE_CRASH_MAX_ATTEMPTS`, `SERVICE_CRASH_WINDOW_SECONDS`, `SERVICE_CRASH_BACKOFF_SECONDS`
 
-`PLEX_LDAP_BIND_ADDRESS` and `PLEX_HTTP_BIND_ADDRESS` only control host port publishing in [compose.yml](compose.yml). They are not application settings. Inside the container, the service binds with `PLEX_LDAP_HOST=0.0.0.0` and `PLEX_HTTP_HOST=0.0.0.0`.
+`GATEWAY_LDAP_BIND_ADDRESS` and `GATEWAY_HTTP_BIND_ADDRESS` only control host port publishing in [compose.yml](compose.yml). They are not application settings. Inside the container, the service binds with `GATEWAY_LDAP_HOST=0.0.0.0` and `GATEWAY_HTTP_HOST=0.0.0.0`.
 
 ## Running locally
 
@@ -107,8 +107,8 @@ If you prefer, you can export the same variables from your shell instead of usin
 
 The compose template publishes LDAP on all interfaces by default and HTTP on localhost by default:
 
-- LDAP publish address: `PLEX_LDAP_BIND_ADDRESS`, default `0.0.0.0`
-- HTTP publish address: `PLEX_HTTP_BIND_ADDRESS`, default `127.0.0.1`
+- LDAP publish address: `GATEWAY_LDAP_BIND_ADDRESS`, default `0.0.0.0`
+- HTTP publish address: `GATEWAY_HTTP_BIND_ADDRESS`, default `127.0.0.1`
 
 When file logging is enabled in the shipped container artifacts, the recommended path is `/config/logs/plex-ldap-gateway.log` so logs persist on the mounted config volume.
 
@@ -119,8 +119,8 @@ When file logging is enabled in the shipped container artifacts, the recommended
 1. Load settings from environment variables.
 2. Fetch the Plex owner account with `PLEX_OWNER_TOKEN`.
 3. Fetch the Plex users shared by that owner.
-4. If `PLEX_LDAP_STRICT_MACHINE_MATCH=true`, keep only users who can access `PLEX_MACHINE_IDENTIFIER`.
-5. Build a read-only LDAP tree rooted at `PLEX_LDAP_BASE_DN`, with all users under `ou=users`.
+4. If `GATEWAY_LDAP_STRICT_MACHINE_MATCH=true`, keep only users who can access `PLEX_MACHINE_IDENTIFIER`.
+5. Build a read-only LDAP tree rooted at `GATEWAY_LDAP_BASE_DN`, with all users under `ou=users`.
 
 ### Binding behavior
 
@@ -145,7 +145,7 @@ dc=plex,dc=ldap
 	+-- uid=<generated-user-id>
 ```
 
-The root DN is configurable with `PLEX_LDAP_BASE_DN`. User entries always live under `ou=users,<base DN>`.
+The root DN is configurable with `GATEWAY_LDAP_BASE_DN`. User entries always live under `ou=users,<base DN>`.
 
 Each generated user entry is read-only and exposes these LDAP attributes:
 
