@@ -2,7 +2,7 @@
 
 Some apps only know how to log in against LDAP. Plex does not speak LDAP. This project sits in the middle and makes your Plex users look like LDAP users so those apps can authenticate with Plex-backed identities.
 
-When an LDAP client tries to log in, this service resolves the LDAP user, asks Plex to verify the password, and returns an LDAP bind success or failure. The LDAP side is only a read-only view of Plex. Passwords stay in Plex rather than being copied into a separate LDAP database.
+When an LDAP client tries to log in, this service asks Plex to verify the username and password, and then returns an LDAP login success or failure. The LDAP side is only a read-only view of Plex. Passwords stay in Plex rather than being copied into a separate LDAP database.
 
 ## What the service exposes
 
