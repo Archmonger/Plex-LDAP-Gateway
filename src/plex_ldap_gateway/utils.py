@@ -10,9 +10,7 @@ from twisted.internet import defer
 
 
 def coerce_text(value: str | bytes) -> str:
-    if isinstance(value, bytes):
-        return value.decode("utf-8")
-    return value
+    return value.decode("utf-8") if isinstance(value, bytes) else value
 
 
 def normalize_identity(value: str | bytes) -> str:
@@ -42,9 +40,7 @@ def escape_rdn_value(value: str) -> str:
 
 def derive_surname(display_name: str, fallback: str) -> str:
     pieces = [piece for piece in display_name.strip().split(" ") if piece]
-    if not pieces:
-        return fallback
-    return pieces[-1]
+    return pieces[-1] if pieces else fallback
 
 
 def deferred_from_coro(coro: Any) -> defer.Deferred[Any]:

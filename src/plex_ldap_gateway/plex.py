@@ -13,9 +13,7 @@ from .models import AuthorizedPlexUser, PlexAccount
 
 
 def _int_or_none(value: str | None) -> int | None:
-    if not value:
-        return None
-    return int(value)
+    return int(value) if value else None
 
 
 class AsyncPlexClient:

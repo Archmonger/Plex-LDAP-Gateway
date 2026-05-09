@@ -101,11 +101,12 @@ def build_directory_snapshot(
     )
 
     selected_accounts: list[tuple[PlexAccount, str]] = [(owner_account, "owner")]
-    for shared_user in shared_users:
-        if settings.strict_machine_match and settings.plex_machine_identifier not in shared_user.machine_identifiers:
-            continue
-        selected_accounts.append((shared_user.account, "shared"))
-
+    selected_accounts.extend(
+        (shared_user.account, "shared")
+        for shared_user in shared_users
+        if not settings.strict_machine_match
+        or settings.plex_machine_identifier in shared_user.machine_identifiers
+    )
     seen_identities: set[str] = set()
     used_uids: set[str] = set()
     users: list[DirectoryUser] = []
@@ -220,7 +221,7 @@ class PlexDirectoryService:
         candidates: list[str] = []
         if raw and "," not in raw and "=" not in raw:
             candidates.append(raw)
-        elif raw and "," not in raw and "=" in raw:
+        elif raw and "," not in raw:
             _, _, value = raw.partition("=")
             if value:
                 candidates.append(value)
