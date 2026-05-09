@@ -11,56 +11,32 @@ When an LDAP client tries to log in, this service resolves the LDAP user, asks P
 - An in-memory LDAP tree built from the Plex owner account and matching shared users
 - A single process that runs both the HTTP endpoints and the LDAP listener
 
-## How the directory is built
+## Common client configuration
 
-1. Load settings from environment variables.
-2. Fetch the Plex owner account with `PLEX_OWNER_TOKEN`.
-3. Fetch the Plex users shared by that owner.
-4. If `PLEX_LDAP_STRICT_MACHINE_MATCH=true`, keep only users who can access `PLEX_MACHINE_IDENTIFIER`.
-5. Build a read-only LDAP tree rooted at `PLEX_LDAP_BASE_DN`, with all users under `ou=users`.
+Here is an example client configuration, written from the perspective of the `Jellyfin LDAP-Auth` plugin:
 
-## LDAP layout
-
-By default, the generated directory looks like this:
-
-```text
-dc=plex,dc=ldap
-+-- ou=users
-	+-- uid=<generated-user-id>
-```
-
-The root DN is configurable with `PLEX_LDAP_BASE_DN`. User entries always live under `ou=users,<base DN>`.
-
-## Binding behavior
-
-Credentialed binds can resolve a user by:
-
-- Full DN, such as `uid=alice,ou=users,dc=plex,dc=ldap`
-- Plain identifier, such as `alice`
-- Email address, such as `alice@example.com`
-- Simple `attr=value` input, such as `uid=alice`
-
-Short-form identifiers only work when they map to exactly one generated user in the current directory snapshot.
-
-An empty bind DN is treated as an anonymous bind. Non-anonymous binds with empty passwords are rejected.
-
-## LDAP user attributes
-
-Each generated user entry is read-only and exposes these LDAP attributes:
-
-| Attribute | Value | Notes |
+| Setting | Value | Notes |
 | --- | --- | --- |
-| `objectClass` | `top`, `person`, `organizationalPerson`, `inetOrgPerson` | Fixed for every generated user |
-| `uid` | Generated from Plex username, email, title, or a fallback value | Also used in the LDAP DN |
-| `cn` | Plex display name | Uses Plex title, then username, email, UUID, or `plex-user` |
-| `sn` | Derived surname | Falls back to `uid` when a surname cannot be inferred |
-| `displayName` | Same display name as `cn` | Always present |
-| `employeeType` | `owner` or `shared` | Shows how the user entered the directory |
-| `plexUsername` | Plex username | Present only when Plex returns one |
-| `mail` | Plex email address | Present only when Plex returns one |
-| `userPrincipalName` | Same value as `mail` | Present only when Plex returns an email |
-
-Internally the service also tracks Plex identifiers, bind aliases, and uniqueness indexes, but those internal fields are not exposed as LDAP attributes.
+| `LDAP Server` | `192.168.1.123` | Replace this value with the host/IP that publishes the LDAP port. Can be set to a container name if on a shared Docker network. |
+| `LDAP Port` | `1389` | Use the published port if you changed the default. |
+| `Secure LDAP` | `Disabled` | Turn on only when an external TLS terminator exposes LDAPS in front of the gateway. |
+| `StartTLS` | `Disabled` | The gateway does not advertise StartTLS. |
+| `Allow Password Change` | `Disabled` | The directory is read-only. Passwords are managed by Plex. |
+| `Password Reset Url` | `https://app.plex.tv/auth/#?resetPassword` | Optional convenience link; password changes do not happen through LDAP here. |
+| `LDAP Bind User` | blank | Leave blank to use anonymous binds. |
+| `LDAP Bind User Password` | blank | Not needed when the bind user is blank. |
+| `LDAP Base DN for searches` | `ou=users,dc=plex,dc=ldap` | This should match the base DN used in the gateway configuration `PLEX_LDAP_BASE_DN`. |
+| `LDAP Search Filter` | `(objectClass=inetOrgPerson)` | Used as the base filter; the plugin adds an OR over the search attributes below. |
+| `LDAP Search Attributes` | `uid, cn, mail, plexUsername` | Allow users sign in with any username-like attributes. |
+| `LDAP Uid Attribute` | `uid` | Unique and always present. |
+| `LDAP Username Attribute` | `cn` | Default for Jellyfin usernames created from LDAP. Can be set to `uid` if you want to keep your new Plex-LDAP users completely separate. |
+| `LDAP Password Attribute` | blank | Only needed when an LDAP server supports password changes, which this gateway does not. |
+| `Enable profile image synchronization` | `Disabled` | The gateway does not expose a profile image attribute. |
+| `Remove profile images not in LDAP` | `Disabled` | The gateway does not expose a profile image attribute, thus this setting has no effect. |
+| `LDAP Admin Base DN` | `ou=users,dc=plex,dc=ldap` | Set to the value you put within `LDAP Base DN for searches`. Whether an account is an admin is determined via the filter below. |
+| `LDAP Admin Filter` | `(employeeType=owner)` | Automatically grant Jellyfin admin access to the Plex owner account. |
+| `Enable Admin Filter 'memberUid' mode` | `Disabled` | Not used by this directory layout. |
+| `Enable User Creation` | `Enabled` | Creates an equivalent Jellyfin user on first successful LDAP login. The new Jellyfin user will be auto-configured to authenticate against the LDAP server, rather than the local Jellyfin database. Note: If a user already exists with the same `LDAP Username Attribute`, they will not be automatically reconfigured to authenticate against LDAP. However, they will be able to login if their credentials match. |
 
 ## Environment variables
 
@@ -84,7 +60,7 @@ Optional application settings:
 - `PLEX_HTTP_HOST`: defaults to `127.0.0.1`
 - `PLEX_HTTP_PORT`: defaults to `7576`
 
-Compose- and container-focused helper settings used by the shipped deployment files:
+Docker specific settings:
 
 - `PUID`, `PGID`, `TZ`
 - `PLEX_LDAP_BIND_ADDRESS`, `PLEX_HTTP_BIND_ADDRESS`
@@ -101,9 +77,7 @@ pip install -e .
 plex-ldap-gateway
 ```
 
-The bundled runner chooses `uvloop` on non-Windows platforms and `winloop` on Windows before Twisted installs its asyncio reactor.
-
-You can also start the ASGI app through an external server:
+Alternatively, you can also start the ASGI app through an external server:
 
 ```powershell
 uvicorn --factory plex_ldap_gateway.app:create_app --host 127.0.0.1 --port 7576
@@ -111,7 +85,7 @@ uvicorn --factory plex_ldap_gateway.app:create_app --host 127.0.0.1 --port 7576
 
 If you do that, your ASGI server must create a Twisted-compatible asyncio loop before startup so the LDAP listener can attach to the same process.
 
-## Docker and Unraid
+## Running in Docker
 
 The repository ships deployment artifacts for LinuxServer-style container environments:
 
@@ -133,13 +107,64 @@ The compose template publishes LDAP on all interfaces by default and HTTP on loc
 - LDAP publish address: `PLEX_LDAP_BIND_ADDRESS`, default `0.0.0.0`
 - HTTP publish address: `PLEX_HTTP_BIND_ADDRESS`, default `127.0.0.1`
 
-## HTTP endpoints
+## Technical overview
+
+### How the directory is built
+
+1. Load settings from environment variables.
+2. Fetch the Plex owner account with `PLEX_OWNER_TOKEN`.
+3. Fetch the Plex users shared by that owner.
+4. If `PLEX_LDAP_STRICT_MACHINE_MATCH=true`, keep only users who can access `PLEX_MACHINE_IDENTIFIER`.
+5. Build a read-only LDAP tree rooted at `PLEX_LDAP_BASE_DN`, with all users under `ou=users`.
+
+### Binding behavior
+
+Credentialed binds can resolve a user by:
+
+- Full DN, such as `uid=alice,ou=users,dc=plex,dc=ldap`
+- Plain identifier, such as `alice`
+- Email address, such as `alice@example.com`
+- Simple `attr=value` input, such as `uid=alice`
+
+Short-form identifiers only work when they map to exactly one generated user in the current directory snapshot.
+
+An empty bind DN is treated as an anonymous bind. Non-anonymous binds with empty passwords are rejected.
+
+### LDAP layout
+
+By default, the generated directory looks like this:
+
+```text
+dc=plex,dc=ldap
++-- ou=users
+	+-- uid=<generated-user-id>
+```
+
+The root DN is configurable with `PLEX_LDAP_BASE_DN`. User entries always live under `ou=users,<base DN>`.
+
+Each generated user entry is read-only and exposes these LDAP attributes:
+
+| Attribute | Value | Notes |
+| --- | --- | --- |
+| `objectClass` | `top`, `person`, `organizationalPerson`, `inetOrgPerson` | Fixed for every generated user |
+| `uid` | Generated from Plex username, email, title, or a fallback value | Also used in the LDAP DN |
+| `cn` | Plex display name | Uses Plex title, then username, email, UUID, or `plex-user` |
+| `sn` | Derived surname | Falls back to `uid` when a surname cannot be inferred |
+| `displayName` | Same display name as `cn` | Always present |
+| `employeeType` | `owner` or `shared` | Shows how the user entered the directory |
+| `plexUsername` | Plex username | Present only when Plex returns one |
+| `mail` | Plex email address | Present only when Plex returns one |
+| `userPrincipalName` | Same value as `mail` | Present only when Plex returns an email |
+
+Internally the service also tracks Plex identifiers, bind aliases, and uniqueness indexes, but those internal fields are not exposed as LDAP attributes.
+
+### HTTP endpoints
 
 - `GET /healthz`: process status, directory size, last refresh timestamp, and listener state
 - `GET /readyz`: readiness state, refreshing from Plex when the cache is stale
 - `GET /readyz?force=1`: forces a fresh Plex directory refresh before responding
 
-## Testing and CI
+### Testing and CI
 
 Useful local commands:
 
@@ -169,7 +194,7 @@ The GitHub Actions workflow currently runs:
 - Docker image build validation
 - `docker compose` startup and smoke validation when Plex secrets are available
 
-## Security and behavior notes
+### Security and behavior notes
 
 - LDAP simple bind sends credentials in cleartext unless you add transport security. Put this behind trusted network boundaries or wrap LDAP with TLS separately.
 - The generated LDAP directory is read-only.
