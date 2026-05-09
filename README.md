@@ -9,41 +9,27 @@ When an LDAP client tries to log in, this service asks Plex to verify the userna
 - An LDAPv3 listener for bind, search, and unbind operations
 - A small HTTP server with health and readiness endpoints
 - An in-memory LDAP tree built from the Plex owner account and matching shared users
-- A single process that runs both the HTTP endpoints and the LDAP listener
+- A single process that runs HTTP and LDAP listeners
 
 ## Running in Docker
 
-Published container images are available at `ghcr.io/archmonger/plex-ldap-gateway`. Each GitHub release publishes both `latest` and a matching version tag.
-
-To install and run the published image directly from GHCR:
+Install and run the published image directly from GHCR:
 
 ```powershell
 docker pull ghcr.io/archmonger/plex-ldap-gateway:latest
 docker run -d `
 	--name plex-ldap-gateway `
-	--restart on-failure:5 `
-	--cap-drop=ALL `
-	--cap-add=CHOWN `
-	--cap-add=SETGID `
-	--cap-add=SETUID `
-	--security-opt=no-new-privileges:true `
 	-p 1389:1389 `
 	-p 127.0.0.1:7576:7576 `
-	-v plex-ldap-gateway-config:/config `
+	-v "<your-preferred-data-path>:/config" `
 	-e PLEX_OWNER_TOKEN="<your-plex-owner-token>" `
 	-e PLEX_MACHINE_IDENTIFIER="<your-plex-machine-identifier>" `
 	ghcr.io/archmonger/plex-ldap-gateway:latest
 ```
 
-Replace `latest` with a release tag if you want to pin a specific version. The example above publishes LDAP on all interfaces and keeps the HTTP health endpoint on localhost; adjust the `-p` mappings if you need different host bindings. It includes only the two mandatory application settings; add any optional settings with additional `-e` flags as needed.
-
-If you prefer orchestration, [compose.yml](compose.yml) can be pointed at the same GHCR image, and [unraid/plex-ldap-gateway.xml](unraid/plex-ldap-gateway.xml) already uses `ghcr.io/archmonger/plex-ldap-gateway:latest`. [Dockerfile](Dockerfile) remains available if you want to build the image yourself.
-
-When file logging is enabled in the shipped container artifacts, the recommended path is `/config/logs/plex-ldap-gateway.log` so logs persist on the mounted config volume.
-
 ## Running locally
 
-Open this repository's files on your local machine within terminal, set the required environment variables, then install and start the bundled runner:
+Open this repository's files on your local machine within terminal, set the required environment variables, install the python project, then start the bundled runner:
 
 ```powershell
 pip install -e .
@@ -55,8 +41,6 @@ Alternatively, you can also start the ASGI app through an external server:
 ```powershell
 uvicorn --factory plex_ldap_gateway.app:create_app --host 127.0.0.1 --port 7576
 ```
-
-If you do that, your ASGI server must create a Twisted-compatible asyncio loop before startup (so the LDAP listener can attach to that same process).
 
 ## Environment variables
 
@@ -167,8 +151,6 @@ Each generated user entry is read-only and exposes these LDAP attributes:
 | `mail` | Plex email address | Present only when Plex returns one |
 | `userPrincipalName` | Same value as `mail` | Present only when Plex returns an email |
 
-Internally the service also tracks Plex identifiers, bind aliases, and uniqueness indexes, but those internal fields are not exposed as LDAP attributes.
-
 ### HTTP endpoints
 
 - `GET /healthz`: process status, directory size, last refresh timestamp, and listener state
@@ -197,13 +179,6 @@ Optional live-test variables:
 - `PLEX_TEST_BIND_IDENTITY`: defaults to `PLEX_TEST_BIND_LOGIN`
 - `PLEX_TEST_EXPECTED_USERNAME`
 - `PLEX_TEST_EXPECTED_EMAIL`
-
-The GitHub Actions workflow currently runs:
-
-- `hatch fmt --check`
-- `hatch test --cover` on Python 3.13 and 3.14
-- Docker image build validation
-- `docker compose` startup and smoke validation when Plex secrets are available
 
 ### Security and behavior notes
 
