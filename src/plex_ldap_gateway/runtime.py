@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import sys
 from contextlib import suppress
 from importlib import import_module
@@ -21,18 +22,25 @@ WINDOWS_LOOP_ERROR = (
 INCOMPATIBLE_REACTOR_ERROR = "Twisted reactor is already installed and is not asyncio-compatible"
 
 
+logger = logging.getLogger(__name__)
+
+
 def new_event_loop() -> asyncio.AbstractEventLoop:
     if sys.platform == "win32":
         try:
             winloop = import_module("winloop")
         except ImportError:
+            logger.debug("winloop is unavailable; falling back to asyncio.new_event_loop on Windows")
             return asyncio.new_event_loop()
+        logger.debug("Using winloop event loop on Windows")
         return winloop.new_event_loop()
 
     try:
         uvloop = import_module("uvloop")
     except ImportError:
+        logger.debug("uvloop is unavailable; falling back to asyncio.new_event_loop")
         return asyncio.new_event_loop()
+    logger.debug("Using uvloop event loop")
     return uvloop.new_event_loop()
 
 
@@ -40,8 +48,10 @@ def _ensure_windows_reactor_compatible_loop(loop: asyncio.AbstractEventLoop) -> 
     if sys.platform != "win32":
         return
     if "ProactorEventLoop" in loop.__class__.__name__:
+        logger.error("Detected incompatible Windows event loop: %s", loop.__class__.__name__)
         raise RuntimeError(WINDOWS_LOOP_ERROR)
     if not callable(getattr(loop, "add_reader", None)) or not callable(getattr(loop, "add_writer", None)):
+        logger.error("Detected Windows event loop without add_reader/add_writer support")
         raise TypeError(WINDOWS_LOOP_ERROR)
 
 
@@ -52,11 +62,14 @@ def install_asyncio_reactor(loop: asyncio.AbstractEventLoop | None = None):
     _ensure_windows_reactor_compatible_loop(active_loop)
     with suppress(error.ReactorAlreadyInstalledError):
         asyncioreactor.install(active_loop)
+        logger.debug("Installed Twisted asyncio reactor")
 
     from twisted.internet import reactor
 
     if "AsyncioSelectorReactor" not in reactor.__class__.__name__:
+        logger.error("Twisted reactor is incompatible: %s", reactor.__class__.__name__)
         raise RuntimeError(INCOMPATIBLE_REACTOR_ERROR)
+    logger.debug("Using Twisted reactor %s", reactor.__class__.__name__)
     return reactor
 
 
@@ -73,6 +86,7 @@ class LDAPListener:
 
     async def start(self) -> None:
         if self._listening_port is not None:
+            logger.debug("LDAP listener start requested while already listening")
             return
         reactor = install_asyncio_reactor(asyncio.get_running_loop())
         if self.factory is None:
@@ -86,13 +100,16 @@ class LDAPListener:
             self.factory,
             interface=self.settings.ldap_host,
         )
+        logger.info("LDAP listener started on %s:%s", self.settings.ldap_host, self.settings.ldap_port)
 
     async def stop(self) -> None:
         from twisted.internet import defer
 
         if self._listening_port is None:
+            logger.debug("LDAP listener stop requested while not listening")
             return
         deferred_stop = self._listening_port.stopListening()
         if isinstance(deferred_stop, defer.Deferred):
             await deferred_stop.asFuture(asyncio.get_running_loop())
         self._listening_port = None
+        logger.info("LDAP listener stopped")

@@ -2,11 +2,23 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Mapping
 from dataclasses import dataclass
 from os import environ
 
 from .__init__ import __version__
+
+_LOG_LEVELS = {
+    "critical": logging.CRITICAL,
+    "fatal": logging.CRITICAL,
+    "error": logging.ERROR,
+    "warning": logging.WARNING,
+    "warn": logging.WARNING,
+    "info": logging.INFO,
+    "debug": logging.DEBUG,
+}
+_LOG_OUTPUTS = frozenset({"console", "file", "both"})
 
 
 def _require(name: str, values: Mapping[str, str]) -> str:
@@ -37,6 +49,38 @@ def _get_float(name: str, values: Mapping[str, str], default: float) -> float:
     return float(raw)
 
 
+def _get_log_level(name: str, values: Mapping[str, str], default: int) -> int:
+    raw = values.get(name)
+    if raw is None or not raw.strip():
+        return default
+
+    normalized = raw.strip().casefold()
+    try:
+        return _LOG_LEVELS[normalized]
+    except KeyError as error:
+        allowed = ", ".join(sorted(_LOG_LEVELS))
+        raise ValueError(f"Invalid value for {name}: {raw!r}. Expected one of: {allowed}") from error
+
+
+def _get_log_output(name: str, values: Mapping[str, str], default: str) -> str:
+    raw = values.get(name)
+    if raw is None or not raw.strip():
+        return default
+
+    normalized = raw.strip().casefold()
+    if normalized not in _LOG_OUTPUTS:
+        allowed = ", ".join(sorted(_LOG_OUTPUTS))
+        raise ValueError(f"Invalid value for {name}: {raw!r}. Expected one of: {allowed}")
+    return normalized
+
+
+def _get_str(name: str, values: Mapping[str, str], default: str) -> str:
+    raw = values.get(name)
+    if raw is None or not raw.strip():
+        return default
+    return raw.strip()
+
+
 @dataclass(frozen=True, slots=True)
 class Settings:
     plex_owner_token: str
@@ -53,6 +97,9 @@ class Settings:
     ldap_port: int
     http_host: str
     http_port: int
+    log_level: int
+    log_output: str
+    log_file_path: str
 
     @property
     def users_dn(self) -> str:
@@ -81,4 +128,7 @@ class Settings:
             ldap_port=_get_int("PLEX_LDAP_PORT", source, 1389),
             http_host=source.get("PLEX_HTTP_HOST", "127.0.0.1").strip(),
             http_port=_get_int("PLEX_HTTP_PORT", source, 7576),
+            log_level=_get_log_level("GATEWAY_LOG_LEVEL", source, logging.ERROR),
+            log_output=_get_log_output("GATEWAY_LOG_OUTPUT", source, "console"),
+            log_file_path=_get_str("GATEWAY_LOG_FILE_PATH", source, "plex-ldap-gateway.log"),
         )

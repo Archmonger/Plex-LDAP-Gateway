@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+import logging
 import sys
 from types import SimpleNamespace
 
@@ -38,6 +39,9 @@ def test_config_helpers_and_settings_defaults(monkeypatch: pytest.MonkeyPatch) -
         "PLEX_LDAP_PORT",
         "PLEX_HTTP_HOST",
         "PLEX_HTTP_PORT",
+        "GATEWAY_LOG_LEVEL",
+        "GATEWAY_LOG_OUTPUT",
+        "GATEWAY_LOG_FILE_PATH",
     ):
         monkeypatch.delenv(name, raising=False)
 
@@ -52,6 +56,9 @@ def test_config_helpers_and_settings_defaults(monkeypatch: pytest.MonkeyPatch) -
     assert settings.strict_machine_match is True
     assert settings.directory_refresh_seconds == 300
     assert settings.http_port == 7576
+    assert settings.log_level == logging.ERROR
+    assert settings.log_output == "console"
+    assert settings.log_file_path == "plex-ldap-gateway.log"
     assert settings.users_dn == "ou=users,dc=plex,dc=ldap"
     assert _get_bool("FLAG", {}, False) is False
     assert _get_bool("FLAG", {"FLAG": "On"}, False) is True
@@ -70,6 +77,42 @@ def test_settings_from_env_honors_explicit_empty_mapping(monkeypatch: pytest.Mon
 
     with pytest.raises(ValueError, match="Missing required environment variable: PLEX_MACHINE_IDENTIFIER"):
         Settings.from_env({})
+
+
+def test_settings_from_env_parses_logging_options() -> None:
+    settings = Settings.from_env(
+        {
+            "PLEX_OWNER_TOKEN": "owner-token",
+            "PLEX_MACHINE_IDENTIFIER": "machine-1",
+            "GATEWAY_LOG_LEVEL": "debug",
+            "GATEWAY_LOG_OUTPUT": "file",
+            "GATEWAY_LOG_FILE_PATH": "logs/service.log",
+        }
+    )
+
+    assert settings.log_level == logging.DEBUG
+    assert settings.log_output == "file"
+    assert settings.log_file_path == "logs/service.log"
+
+
+def test_settings_from_env_rejects_invalid_logging_options() -> None:
+    with pytest.raises(ValueError, match="Invalid value for GATEWAY_LOG_LEVEL"):
+        Settings.from_env(
+            {
+                "PLEX_OWNER_TOKEN": "owner-token",
+                "PLEX_MACHINE_IDENTIFIER": "machine-1",
+                "GATEWAY_LOG_LEVEL": "verbose",
+            }
+        )
+
+    with pytest.raises(ValueError, match="Invalid value for GATEWAY_LOG_OUTPUT"):
+        Settings.from_env(
+            {
+                "PLEX_OWNER_TOKEN": "owner-token",
+                "PLEX_MACHINE_IDENTIFIER": "machine-1",
+                "GATEWAY_LOG_OUTPUT": "everywhere",
+            }
+        )
 
 
 def test_asgi_module_uses_create_app(monkeypatch: pytest.MonkeyPatch) -> None:

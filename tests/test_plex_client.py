@@ -77,3 +77,35 @@ async def test_get_shared_users_parses_machine_access() -> None:
     assert users[0].machine_identifiers == {"machine-1", "machine-2"}
     assert users[0].home_user is True
     assert users[1].restricted is True
+
+
+@pytest.mark.asyncio
+async def test_get_owner_account_parses_owner_response() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/api/v2/user"
+        assert request.headers["X-Plex-Token"] == "owner-token"
+        return httpx.Response(
+            200,
+            json={
+                "id": 1,
+                "uuid": "owner-uuid",
+                "username": "owner",
+                "email": "owner@example.com",
+                "title": "Owner",
+                "authToken": "owner-auth-token",
+            },
+        )
+
+    client = AsyncPlexClient(make_settings(), transport=httpx.MockTransport(handler))
+    account = await client.get_owner_account()
+    await client.aclose()
+
+    assert account == PlexAccount(
+        plex_id=1,
+        uuid="owner-uuid",
+        username="owner",
+        email="owner@example.com",
+        title="Owner",
+        auth_token="owner-auth-token",
+        thumb=None,
+    )

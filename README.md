@@ -59,6 +59,9 @@ Optional application settings:
 - `PLEX_LDAP_PORT`: defaults to `1389`
 - `PLEX_HTTP_HOST`: defaults to `127.0.0.1`
 - `PLEX_HTTP_PORT`: defaults to `7576`
+- `GATEWAY_LOG_LEVEL`: defaults to `ERROR`
+- `GATEWAY_LOG_OUTPUT`: defaults to `console`; supported values are `console`, `file`, and `both`
+- `GATEWAY_LOG_FILE_PATH`: defaults to `plex-ldap-gateway.log`; used when `GATEWAY_LOG_OUTPUT` includes file output
 
 Docker specific settings:
 
@@ -106,6 +109,8 @@ The compose template publishes LDAP on all interfaces by default and HTTP on loc
 
 - LDAP publish address: `PLEX_LDAP_BIND_ADDRESS`, default `0.0.0.0`
 - HTTP publish address: `PLEX_HTTP_BIND_ADDRESS`, default `127.0.0.1`
+
+When file logging is enabled in the shipped container artifacts, the recommended path is `/config/logs/plex-ldap-gateway.log` so logs persist on the mounted config volume.
 
 ## Technical overview
 

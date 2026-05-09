@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from typing import Protocol
 
 from ldaptor import inmemory
@@ -12,6 +13,8 @@ from .config import Settings
 from .errors import PlexAuthenticationError
 from .models import AuthorizedPlexUser, DirectorySnapshot, DirectoryUser, PlexAccount
 from .utils import escape_rdn_value, normalize_dn, normalize_identity
+
+logger = logging.getLogger(__name__)
 
 
 class PlexClientProtocol(Protocol):
@@ -29,6 +32,7 @@ def _decode_credential_value(value: str | bytes) -> str:
         try:
             return value.decode("utf-8")
         except UnicodeDecodeError as error:
+            logger.warning("Rejected credential value with invalid UTF-8 encoding")
             raise PlexAuthenticationError("Invalid credential encoding") from error
     return value
 
@@ -104,9 +108,15 @@ def build_directory_snapshot(
     selected_accounts.extend(
         (shared_user.account, "shared")
         for shared_user in shared_users
-        if not settings.strict_machine_match
-        or settings.plex_machine_identifier in shared_user.machine_identifiers
+        if not settings.strict_machine_match or settings.plex_machine_identifier in shared_user.machine_identifiers
     )
+    filtered_users = len(shared_users) - (len(selected_accounts) - 1)
+    if filtered_users:
+        logger.debug(
+            "Filtered %s shared Plex users that do not match machine identifier %s",
+            filtered_users,
+            settings.plex_machine_identifier,
+        )
     seen_identities: set[str] = set()
     used_uids: set[str] = set()
     users: list[DirectoryUser] = []
@@ -116,6 +126,13 @@ def build_directory_snapshot(
     for account, role in selected_accounts:
         identity_keys = _identity_keys(account)
         if identity_keys and identity_keys & seen_identities:
+            logger.warning(
+                "Skipping duplicate Plex identity while building directory snapshot: plex_id=%s uuid=%s username=%s email=%s",
+                account.plex_id,
+                account.uuid,
+                account.username,
+                account.email,
+            )
             continue
         seen_identities.update(identity_keys)
         uid = _preferred_uid(account, used_uids)
@@ -152,6 +169,12 @@ def build_directory_snapshot(
             alias_buckets.setdefault(alias, []).append(user)
 
     alias_index = {alias: grouped_users[0] for alias, grouped_users in alias_buckets.items() if len(grouped_users) == 1}
+    logger.info(
+        "Built directory snapshot with %s users (%s shared candidates, strict_machine_match=%s)",
+        len(users),
+        len(shared_users),
+        settings.strict_machine_match,
+    )
     return DirectorySnapshot(
         root=root,
         users=tuple(users),
@@ -167,16 +190,19 @@ class PlexDirectoryService:
         self._refresh_lock = asyncio.Lock()
         self._snapshot_loaded = False
         self._snapshot = build_directory_snapshot(settings, PlexAccount(None, None, "owner", None, "Plex Owner"), [])
+        logger.debug("Initialized directory service")
 
     @property
     def current_snapshot(self) -> DirectorySnapshot:
         return self._snapshot
 
     async def aclose(self) -> None:
+        logger.debug("Closing directory service")
         await self.plex_client.aclose()
 
     async def refresh(self, *, force: bool = False) -> DirectorySnapshot:
         if self._snapshot_loaded and not force and self._snapshot.age_seconds < self.settings.directory_refresh_seconds:
+            logger.debug("Returning cached directory snapshot without refresh")
             return self._snapshot
 
         async with self._refresh_lock:
@@ -185,34 +211,45 @@ class PlexDirectoryService:
                 and not force
                 and self._snapshot.age_seconds < self.settings.directory_refresh_seconds
             ):
+                logger.debug("Returning cached directory snapshot after waiting for refresh lock")
                 return self._snapshot
+            logger.info("Refreshing directory snapshot from Plex (force=%s)", force)
             owner_account, shared_users = await asyncio.gather(
                 self.plex_client.get_owner_account(),
                 self.plex_client.get_shared_users(),
             )
             self._snapshot = build_directory_snapshot(self.settings, owner_account, shared_users)
             self._snapshot_loaded = True
+            logger.info("Directory refresh complete with %s users", self._snapshot.user_count)
             return self._snapshot
 
     async def authenticate_bind(self, bind_identity: str | bytes, password: str | bytes) -> DirectoryUser:
         if not password:
+            logger.warning("Rejected bind with empty password")
             raise PlexAuthenticationError("Empty passwords are not accepted")
 
         snapshot = await self.refresh()
         user = self._resolve_user(snapshot, bind_identity)
         if user is None:
+            logger.warning("Rejected bind for unknown directory identity")
             raise PlexAuthenticationError("Unknown Plex directory identity")
 
         password_text = _decode_credential_value(password)
         bind_candidates = self._bind_candidates(bind_identity, user)
+        logger.debug(
+            "Attempting bind for directory user %s using %s Plex login candidates", user.uid, len(bind_candidates)
+        )
         for login in bind_candidates:
             try:
                 account = await self.plex_client.authenticate_user(login, password_text)
             except PlexAuthenticationError:
+                logger.debug("Plex rejected bind candidate %s for directory user %s", login, user.uid)
                 continue
             if user.matches_account(account):
+                logger.info("LDAP bind succeeded for directory user %s", user.uid)
                 return user
 
+        logger.warning("Rejected bind for directory user %s due to invalid Plex credentials", user.uid)
         raise PlexAuthenticationError("Invalid Plex credentials")
 
     def _bind_candidates(self, bind_identity: str | bytes, user: DirectoryUser) -> tuple[str, ...]:
@@ -228,24 +265,32 @@ class PlexDirectoryService:
         for candidate in user.bind_logins:
             if candidate not in candidates:
                 candidates.append(candidate)
+        logger.debug("Resolved bind candidates for directory user %s: %s", user.uid, candidates)
         return tuple(candidates)
 
     def _resolve_user(self, snapshot: DirectorySnapshot, bind_identity: str | bytes) -> DirectoryUser | None:
         raw = _decode_credential_value(bind_identity)
         raw = raw.strip()
         if not raw:
+            logger.debug("Received empty bind identity during lookup")
             return None
 
         user = snapshot.dn_index.get(normalize_dn(raw))
         if user is not None:
+            logger.debug("Resolved bind identity as DN for directory user %s", user.uid)
             return user
 
         direct = snapshot.alias_index.get(normalize_identity(raw))
         if direct is not None:
+            logger.debug("Resolved bind identity as direct alias for directory user %s", direct.uid)
             return direct
 
         if "," not in raw and "=" in raw:
             _, _, value = raw.partition("=")
-            return snapshot.alias_index.get(normalize_identity(value))
+            attr_value_user = snapshot.alias_index.get(normalize_identity(value))
+            if attr_value_user is not None:
+                logger.debug("Resolved bind identity as attribute alias for directory user %s", attr_value_user.uid)
+            return attr_value_user
 
+        logger.debug("Could not resolve bind identity to a directory user")
         return None
