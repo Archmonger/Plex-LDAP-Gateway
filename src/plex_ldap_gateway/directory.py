@@ -137,7 +137,9 @@ def build_directory_snapshot(
         seen_identities.update(identity_keys)
         uid = _preferred_uid(account, used_uids)
         dn = f"uid={escape_rdn_value(uid)},{settings.users_dn}"
-        bind_logins = tuple(dict.fromkeys(login for login in (account.username, account.email, uid) if login and login.strip()))
+        bind_logins = tuple(
+            dict.fromkeys(login for login in (account.username, account.email, uid) if login and login.strip())
+        )
         user = DirectoryUser(
             dn=dn,
             uid=uid,

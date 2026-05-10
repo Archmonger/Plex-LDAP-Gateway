@@ -4,14 +4,11 @@ build-backend = "hatchling.build"
 
 [project]
 name = "plex-ldap-gateway"
-version = "0.1.0"
 description = "ASGI control plane and LDAP gateway that authenticates users against Plex."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
-authors = [
-  { name = "Mark Bakhit" },
-]
+authors = [{ name = "Mark Bakhit" }]
 dependencies = [
   "defusedxml>=0.7.1,<1.0",
   "httpx>=0.27,<1.0",
@@ -22,6 +19,10 @@ dependencies = [
   "uvloop>=0.22.1; sys_platform != 'win32'",
   "winloop>=0.6.3; sys_platform == 'win32'",
 ]
+dynamic = ["version"]
+
+[tool.hatch.version]
+path = "src/plex_ldap_gateway/__init__.py"
 
 [project.scripts]
 plex-ldap-gateway = "plex_ldap_gateway.__main__:main"
@@ -30,11 +31,7 @@ plex-ldap-gateway = "plex_ldap_gateway.__main__:main"
 packages = ["src/plex_ldap_gateway"]
 
 [tool.hatch.envs.hatch-test]
-dependencies = [
-  "pytest>=8.3",
-  "pytest-asyncio>=0.24",
-  "coverage[toml]>=7.6",
-]
+dependencies = ["pytest>=8.3", "pytest-asyncio>=0.24", "coverage[toml]>=7.6"]
 
 [[tool.hatch.envs.hatch-test.matrix]]
 python = ["3.13", "3.14"]
@@ -56,13 +53,7 @@ markers = [
 ]
 
 [tool.ruff.lint]
-ignore = [
-  "EM101",
-  "EM102",
-  "TC001",
-  "TID252",
-  "TRY003",
-]
+ignore = ["EM101", "EM102", "TC001", "TID252", "TRY003"]
 
 [tool.ruff.lint.per-file-ignores]
 "src/plex_ldap_gateway/__main__.py" = ["PLC0415"]
@@ -71,4 +62,16 @@ ignore = [
 "src/plex_ldap_gateway/ldap_server.py" = ["N802", "N815"]
 "src/plex_ldap_gateway/runtime.py" = ["PLC0415"]
 "src/plex_ldap_gateway/utils.py" = ["BLE001"]
-"tests/**/*.py" = ["ARG001", "ARG002", "ARG005", "N802", "N818", "PLC0415", "PLR2004", "S101", "S105", "S106", "SLF001"]
+"tests/**/*.py" = [
+  "ARG001",
+  "ARG002",
+  "ARG005",
+  "N802",
+  "N818",
+  "PLC0415",
+  "PLR2004",
+  "S101",
+  "S105",
+  "S106",
+  "SLF001",
+]
