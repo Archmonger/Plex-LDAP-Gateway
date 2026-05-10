@@ -137,7 +137,7 @@ def build_directory_snapshot(
         seen_identities.update(identity_keys)
         uid = _preferred_uid(account, used_uids)
         dn = f"uid={escape_rdn_value(uid)},{settings.users_dn}"
-        bind_logins = tuple(login for login in (account.username, account.email, uid) if login and login.strip())
+        bind_logins = tuple(dict.fromkeys(login for login in (account.username, account.email, uid) if login and login.strip()))
         user = DirectoryUser(
             dn=dn,
             uid=uid,
@@ -237,6 +237,14 @@ class PlexDirectoryService:
         password_text = _decode_credential_value(password)
         bind_candidates = self._bind_candidates(bind_identity, user)
         logger.debug(
+            "Resolved directory bind target %s with plex_id=%s plex_uuid=%s aliases=%s bind_logins=%s",
+            user.uid,
+            user.plex_id,
+            user.plex_uuid,
+            sorted(user.search_aliases),
+            list(user.bind_logins),
+        )
+        logger.debug(
             "Attempting bind for directory user %s using %s Plex login candidates", user.uid, len(bind_candidates)
         )
         for login in bind_candidates:
@@ -248,6 +256,18 @@ class PlexDirectoryService:
             if user.matches_account(account):
                 logger.info("LDAP bind succeeded for directory user %s", user.uid)
                 return user
+            logger.debug(
+                "Authenticated Plex account for login %s did not match directory user %s (directory plex_id=%s plex_uuid=%s aliases=%s; authenticated plex_id=%s uuid=%s aliases=%s title=%s)",
+                login,
+                user.uid,
+                user.plex_id,
+                user.plex_uuid,
+                sorted(user.search_aliases),
+                account.plex_id,
+                account.uuid,
+                sorted(account.aliases),
+                account.title,
+            )
 
         logger.warning("Rejected bind for directory user %s due to invalid Plex credentials", user.uid)
         raise PlexAuthenticationError("Invalid Plex credentials")

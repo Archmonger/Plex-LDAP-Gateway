@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import httpx
 import pytest
 
 from plex_ldap_gateway.config import Settings
 from plex_ldap_gateway.directory import PlexDirectoryService
 from plex_ldap_gateway.errors import PlexAuthenticationError
 from plex_ldap_gateway.models import AuthorizedPlexUser, PlexAccount
+from plex_ldap_gateway.plex import AsyncPlexClient
 
 
 class FakePlexClient:
@@ -111,3 +113,72 @@ async def test_authenticate_bind_rejects_unknown_user() -> None:
 
     with pytest.raises(PlexAuthenticationError):
         await service.authenticate_bind("unknown", "secret")
+
+
+@pytest.mark.asyncio
+async def test_authenticate_bind_uses_canonicalized_authenticated_account() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/api/v2/user":
+            token = request.headers["X-Plex-Token"]
+            if token == "owner-token":
+                return httpx.Response(
+                    200,
+                    json={
+                        "id": 1,
+                        "uuid": "owner-uuid",
+                        "username": "owner",
+                        "email": "owner@example.com",
+                        "title": "Owner",
+                        "authToken": "owner-token",
+                    },
+                )
+            if token == "alice-auth-token":
+                return httpx.Response(
+                    200,
+                    json={
+                        "id": 77,
+                        "uuid": "alice-account-uuid",
+                        "username": "alice",
+                        "email": "alice@example.com",
+                        "title": "Alice Example",
+                        "authToken": "alice-auth-token",
+                    },
+                )
+            raise AssertionError(f"Unexpected Plex token: {token}")
+
+        if request.url.path == "/api/users":
+            return httpx.Response(
+                200,
+                text="""
+<MediaContainer>
+  <User id="301" uuid="shared-entry-uuid" username="alice" email="alice@example.com" title="Alice Example">
+    <Server machineIdentifier="machine-1" />
+  </User>
+</MediaContainer>
+""",
+            )
+
+        if request.url.path == "/users/sign_in.json":
+            return httpx.Response(
+                200,
+                json={
+                    "user": {
+                        "id": 999,
+                        "uuid": "opaque-sign-in-uuid",
+                        "title": "Shared Library Invite",
+                        "authToken": "alice-auth-token",
+                    }
+                },
+            )
+
+        raise AssertionError(f"Unexpected Plex path: {request.url.path}")
+
+    plex_client = AsyncPlexClient(make_settings(), transport=httpx.MockTransport(handler))
+    service = PlexDirectoryService(make_settings(), plex_client)
+
+    try:
+        user = await service.authenticate_bind("alice", "secret")
+    finally:
+        await service.aclose()
+
+    assert user.uid == "alice"

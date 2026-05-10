@@ -19,6 +19,18 @@ def _int_or_none(value: str | None) -> int | None:
     return int(value) if value else None
 
 
+def _merge_account_profile(sign_in_account: PlexAccount, canonical_account: PlexAccount) -> PlexAccount:
+    return PlexAccount(
+        plex_id=canonical_account.plex_id if canonical_account.plex_id is not None else sign_in_account.plex_id,
+        uuid=canonical_account.uuid or sign_in_account.uuid,
+        username=canonical_account.username or sign_in_account.username,
+        email=canonical_account.email or sign_in_account.email,
+        title=canonical_account.title or sign_in_account.title,
+        auth_token=canonical_account.auth_token or sign_in_account.auth_token,
+        thumb=canonical_account.thumb or sign_in_account.thumb,
+    )
+
+
 class AsyncPlexClient:
     def __init__(
         self,
@@ -57,7 +69,7 @@ class AsyncPlexClient:
         return headers
 
     async def authenticate_user(self, login: str, password: str) -> PlexAccount:
-        logger.debug("Authenticating Plex user for login %s", login)
+        logger.debug("Authenticating Plex user for login %r with password_length=%s", login, len(password))
         response = await self._client.post(
             "/users/sign_in.json",
             headers=self._headers(),
@@ -75,7 +87,57 @@ class AsyncPlexClient:
             logger.error("Plex sign-in response for login %s did not include a user payload", login)
             raise PlexAPIError("Plex sign-in did not return a user payload")
         account = self._parse_account(payload)
+        account = await self._canonicalize_authenticated_account(login, account)
         logger.info("Plex authentication succeeded for login %s", login)
+        return account
+
+    async def _canonicalize_authenticated_account(self, login: str, account: PlexAccount) -> PlexAccount:
+        if not account.auth_token:
+            logger.debug("Plex sign-in response for login %s did not include an auth token", login)
+            return account
+
+        try:
+            canonical_account = await self._get_authenticated_account(account.auth_token)
+        except (httpx.HTTPError, PlexAPIError, PlexAuthenticationError) as error:
+            logger.debug(
+                "Unable to resolve canonical Plex account for login %s; using sign-in response: %s",
+                login,
+                error,
+            )
+            return account
+
+        merged_account = _merge_account_profile(account, canonical_account)
+        logger.debug(
+            "Canonicalized Plex account for login %s from plex_id=%s uuid=%s username=%s email=%s title=%s to plex_id=%s uuid=%s username=%s email=%s title=%s",
+            login,
+            account.plex_id,
+            account.uuid,
+            account.username,
+            account.email,
+            account.title,
+            merged_account.plex_id,
+            merged_account.uuid,
+            merged_account.username,
+            merged_account.email,
+            merged_account.title,
+        )
+        return merged_account
+
+    async def _get_authenticated_account(self, token: str) -> PlexAccount:
+        response = await self._client.get(
+            "/api/v2/user",
+            headers=self._headers(token=token),
+        )
+        if response.status_code in {401, 403}:
+            logger.warning("Authenticated Plex token was rejected while resolving canonical account")
+            raise PlexAuthenticationError("Authenticated Plex token is not valid")
+        response.raise_for_status()
+        payload = response.json()
+        if not isinstance(payload, dict):
+            logger.error("Canonical Plex account lookup returned a non-object payload")
+            raise PlexAPIError("Canonical Plex account lookup did not return a JSON object")
+        account = self._parse_account(payload)
+        logger.debug("Fetched canonical Plex account profile")
         return account
 
     async def get_owner_account(self) -> PlexAccount:

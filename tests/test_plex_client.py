@@ -30,7 +30,6 @@ async def test_authenticate_user_parses_sign_in_response() -> None:
                     "username": "alice",
                     "email": "alice@example.com",
                     "title": "Alice Example",
-                    "authToken": "user-token",
                 }
             },
         )
@@ -42,6 +41,58 @@ async def test_authenticate_user_parses_sign_in_response() -> None:
     assert account == PlexAccount(
         plex_id=101,
         uuid="user-uuid",
+        username="alice",
+        email="alice@example.com",
+        title="Alice Example",
+        auth_token=None,
+        thumb=None,
+    )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("status_code", "json_payload"),
+    [
+        (500, {"error": "upstream error"}),
+        (403, None),
+        (200, []),
+    ],
+)
+async def test_authenticate_user_falls_back_to_sign_in_identity_when_canonical_lookup_fails(
+    status_code: int,
+    json_payload: object | None,
+) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/users/sign_in.json":
+            return httpx.Response(
+                200,
+                json={
+                    "user": {
+                        "id": 101,
+                        "uuid": "sign-in-uuid",
+                        "username": "alice",
+                        "email": "alice@example.com",
+                        "title": "Alice Example",
+                        "authToken": "user-token",
+                    }
+                },
+            )
+
+        if request.url.path == "/api/v2/user":
+            assert request.headers["X-Plex-Token"] == "user-token"
+            if json_payload is None:
+                return httpx.Response(status_code)
+            return httpx.Response(status_code, json=json_payload)
+
+        raise AssertionError(f"Unexpected Plex path: {request.url.path}")
+
+    client = AsyncPlexClient(make_settings(), transport=httpx.MockTransport(handler))
+    account = await client.authenticate_user("alice", "secret")
+    await client.aclose()
+
+    assert account == PlexAccount(
+        plex_id=101,
+        uuid="sign-in-uuid",
         username="alice",
         email="alice@example.com",
         title="Alice Example",

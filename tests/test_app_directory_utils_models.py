@@ -171,6 +171,21 @@ def test_build_directory_snapshot_uses_fallback_uids_and_skips_duplicate_identit
         "plex-user-uuid-only",
         "plex-user-2",
     ]
+    assert snapshot.users[0].bind_logins == ("plex-user",)
+
+
+def test_build_directory_snapshot_deduplicates_bind_logins() -> None:
+    settings = make_settings(strict_machine_match=False)
+    owner = PlexAccount(1, "owner-uuid", "owner", "owner@example.com", "Owner")
+    shared_user = AuthorizedPlexUser(
+        account=PlexAccount(2, "alice-uuid", "alice", "alice@example.com", "Alice Example"),
+        machine_identifiers=frozenset({"machine-1"}),
+    )
+
+    snapshot = build_directory_snapshot(settings, owner, [shared_user])
+    alice = next(user for user in snapshot.users if user.uid == "alice")
+
+    assert alice.bind_logins == ("alice", "alice@example.com")
 
 
 class MatchingPlexClient:
