@@ -29,7 +29,9 @@ docker run -d `
 
 ## Running locally
 
-Open this repository's files on your local machine within terminal, set the required environment variables, install the python project, then start the bundled runner:
+1. Install Python 3.11 or higher on your machine.
+2. Open this repository's files on your local machine within terminal and set the required [environment variables](#environment-variables).
+3. Install the python project then start the bundled runner via the following commands:
 
 ```powershell
 pip install -e .
@@ -84,23 +86,23 @@ Here is an example LDAP client settings, written from the perspective of the `Je
 | `LDAP Server` | `192.168.1.123` | Replace this value with the host/IP that publishes the LDAP port. Can be set to a container name if on a shared Docker network. |
 | `LDAP Port` | `1389` | Use the published port if you changed the default. |
 | `Secure LDAP` | `Disabled` | Turn on only when an external TLS terminator exposes LDAPS in front of the gateway. |
-| `StartTLS` | `Disabled` | The gateway does not advertise StartTLS. |
-| `Allow Password Change` | `Disabled` | The directory is read-only. Passwords are managed by Plex. |
+| `StartTLS` | `Disabled` | This service does not advertise StartTLS. |
+| `Allow Password Change` | `Disabled` | This service directory is read-only. Passwords are managed by Plex. |
 | `Password Reset Url` | `https://app.plex.tv/auth/#?resetPassword` | Optional convenience link; password changes do not happen through LDAP here. |
 | `LDAP Bind User` | blank | Leave blank to use anonymous binds. |
 | `LDAP Bind User Password` | blank | Not needed when the bind user is blank. |
 | `LDAP Base DN for searches` | `ou=users,dc=plex,dc=ldap` | This should match the base DN used in the gateway configuration `GATEWAY_LDAP_BASE_DN`. |
 | `LDAP Search Filter` | `(objectClass=inetOrgPerson)` | Used as the base filter; the plugin adds an OR over the search attributes below. |
-| `LDAP Search Attributes` | `uid, cn, mail, plexUsername` | Allow users sign in with any username-like attributes. |
+| `LDAP Search Attributes` | `uid, cn, mail, plexUsername` | Allow users sign in with any username-like attribute. |
 | `LDAP Uid Attribute` | `uid` | Unique and always present. |
 | `LDAP Username Attribute` | `cn` | Default for Jellyfin usernames created from LDAP. Can be set to `uid` if you want to keep your new Plex-LDAP users completely separate. |
-| `LDAP Password Attribute` | blank | Only needed when an LDAP server supports password changes, which this gateway does not. |
-| `Enable profile image synchronization` | `Disabled` | The gateway does not expose a profile image attribute. |
-| `Remove profile images not in LDAP` | `Disabled` | The gateway does not expose a profile image attribute, thus this setting has no effect. |
-| `LDAP Admin Base DN` | `ou=users,dc=plex,dc=ldap` | Set to the value you put within `LDAP Base DN for searches`. Whether an account is an admin is determined via the filter below. |
-| `LDAP Admin Filter` | `(employeeType=owner)` | Automatically grant Jellyfin admin access to the Plex owner account. |
+| `LDAP Password Attribute` | blank | This service does not support password changes, and this setting is only needed when an LDAP server supports password changes. |
+| `Enable profile image synchronization` | `Disabled` | This service does not expose a profile image attribute. |
+| `Remove profile images not in LDAP` | `Disabled` | This service does not expose a profile image attribute, thus this setting has no effect. |
+| `LDAP Admin Base DN` | `ou=users,dc=plex,dc=ldap` | Set to the value you put within `LDAP Base DN for searches`. Admins are not sorted by DN, but rather by the filter below. |
+| `LDAP Admin Filter` | `(employeeType=owner)` | Automatically grant Jellyfin admin access to the 'Plex owner' account. |
 | `Enable Admin Filter 'memberUid' mode` | `Disabled` | Not used by this directory layout. |
-| `Enable User Creation` | `Enabled` | Creates an equivalent Jellyfin user on first successful LDAP login. The new Jellyfin user will be auto-configured to authenticate against the LDAP server, rather than the local Jellyfin database. Note: If a user already exists with the same `LDAP Username Attribute`, they will not be automatically reconfigured to authenticate against LDAP. However, they will be able to login if their credentials match. |
+| `Enable User Creation` | `Enabled` | Creates an equivalent Jellyfin user on first successful LDAP login. The new Jellyfin user will be auto-configured to authenticate against the LDAP server, rather than the local Jellyfin database. Note: If a user already exists with the same `LDAP Username Attribute`, they will not be automatically reconfigured to authenticate against LDAP. However, they will still be able to login if their credentials match. |
 
 ## Technical overview
 
@@ -185,3 +187,4 @@ Optional live-test variables:
 - LDAP simple bind sends credentials in cleartext unless you add transport security. Put this behind trusted network boundaries or wrap LDAP with TLS separately.
 - The generated LDAP directory is read-only.
 - Passwords are validated against Plex at bind time rather than stored in LDAP.
+- The gateway runs within a single process and is limited to ~50,000 requests per second. It can be scaled horizontally behind a load balancer, if needed.
