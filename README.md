@@ -20,7 +20,7 @@ docker pull ghcr.io/archmonger/plex-ldap-gateway:latest
 docker run -d `
 	--name plex-ldap-gateway `
 	-p 1389:1389 `
-	-p 127.0.0.1:7576:7576 `
+	-p 7576:7576 `
 	-v "<your-preferred-data-path>:/config" `
 	-e PLEX_OWNER_TOKEN="<your-plex-owner-token>" `
 	-e PLEX_MACHINE_IDENTIFIER="<your-plex-machine-identifier>" `
@@ -41,7 +41,7 @@ plex-ldap-gateway
 Alternatively, you can also start the ASGI app through an external server:
 
 ```powershell
-uvicorn --factory plex_ldap_gateway.app:create_app --host 127.0.0.1 --port 7576
+uvicorn --factory plex_ldap_gateway.app:create_app --host 0.0.0.0 --port 7576
 ```
 
 ## Environment variables
@@ -63,7 +63,7 @@ Optional application settings:
 - `GATEWAY_LDAP_BASE_DN`: defaults to `dc=plex,dc=ldap`
 - `GATEWAY_LDAP_HOST`: defaults to `0.0.0.0`
 - `GATEWAY_LDAP_PORT`: defaults to `1389`
-- `GATEWAY_HTTP_HOST`: defaults to `127.0.0.1`
+- `GATEWAY_HTTP_HOST`: defaults to `0.0.0.0`
 - `GATEWAY_HTTP_PORT`: defaults to `7576`
 - `GATEWAY_LOG_LEVEL`: defaults to `ERROR`
 - `GATEWAY_LOG_OUTPUT`: defaults to `console`; supported values are `console`, `file`, and `both`

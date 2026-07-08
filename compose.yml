@@ -32,7 +32,7 @@ services:
       SERVICE_CRASH_BACKOFF_SECONDS: ${SERVICE_CRASH_BACKOFF_SECONDS:-10}
     ports:
       - "${GATEWAY_LDAP_BIND_ADDRESS:-0.0.0.0}:${GATEWAY_LDAP_PORT:-1389}:${GATEWAY_LDAP_PORT:-1389}/tcp"
-      - "${GATEWAY_HTTP_BIND_ADDRESS:-127.0.0.1}:${GATEWAY_HTTP_PORT:-7576}:${GATEWAY_HTTP_PORT:-7576}/tcp"
+      - "${GATEWAY_HTTP_BIND_ADDRESS:-0.0.0.0}:${GATEWAY_HTTP_PORT:-7576}:${GATEWAY_HTTP_PORT:-7576}/tcp"
     volumes:
       - plex-ldap-gateway-config:/config
     healthcheck:

@@ -126,7 +126,7 @@ class Settings:
             ldap_base_dn=source.get("GATEWAY_LDAP_BASE_DN", "dc=plex,dc=ldap").strip(),
             ldap_host=source.get("GATEWAY_LDAP_HOST", "0.0.0.0").strip(),
             ldap_port=_get_int("GATEWAY_LDAP_PORT", source, 1389),
-            http_host=source.get("GATEWAY_HTTP_HOST", "127.0.0.1").strip(),
+            http_host=source.get("GATEWAY_HTTP_HOST", "0.0.0.0").strip(),
             http_port=_get_int("GATEWAY_HTTP_PORT", source, 7576),
             log_level=_get_log_level("GATEWAY_LOG_LEVEL", source, logging.ERROR),
             log_output=_get_log_output("GATEWAY_LOG_OUTPUT", source, "console"),
